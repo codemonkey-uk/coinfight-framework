@@ -1,0 +1,73 @@
+C & C++ Fight Change Log
+------------------------
+
+v1.8b (2003.04.22)
+Adjustment to tournament system so ties are handled in as fair a way as possible.
+Warning fixed.
+Including default .dsp file for MSVC users.
+Tested on:  gcc version 2.95, and MSVC 6
+
+v1.8a (2003.04.17)
+Improvements to compiler support for C API when using a C++ compiler.
+
+v1.8 (2002.05.21)
+Added C API, and some support for same in C++
+Copy construction & assignment added to Move.
+Better use of std library in implementation & tournament.
+Change::RemoveChange now provides strong exception safety (if throw, not modified)
+GameState constructor now protected - clarifies usage.
+
+v1.7 (2002.04.09)
+Added time limits to games.  Any player exceeding their time limit is eliminated.
+Current time limit (PLAYER_TIME_PER_GAME) is 30 seconds per player per game.
+Use Game::GetPlayerTimeTaken( player ) to get time used so far.
+
+v1.6c (2002.01.04)
+Slightly less repetition in multiplayer tournemnt matches.
+Software "firewall" helps prevent cheating.
+
+v1.6b (2001.11.12)
+Minor change in tourny results table (as requested by Martin Lester).
+Added Player::NotifyGameStart(const Game&), consider Player::NotifyGameStart() depricated
+
+v1.6a (2001.11.08)
+Warnings from g++ fixed (thanks to Andy Sveikauskas)
+
+v1.6 (2001.11.07)
+Refactoring of Game class to create GameState value object, see header for details
+Fixed "operator() with no type" on line 306 (thanks to Steven Barker)
+Added GetNextPlayer and GetNextActivePlayer to GameState
+Added maths operators for adding/removing Coins to/from Change.
+
+v1.5 (2001.11.02)
+GetAllPossibleChange( Coin ... ) overload added, example now uses this.
+Changed Change class manipulators to return reference to self.
+Added maths operators to Change.
+Commented examples "AllHigh" and "AllLow".
+Added INITAL_PLAYER_COINS array.
+Counts number of games played.
+Only wait for key press on Windows platform.
+Added game status notification functions to Player class aid learning AI development
+
+v1.4 (2001.10.30)
+Improved commenting of examples & documentation.
+Improved tournament reporting.
+Added GetAllPossibleChange function.
+"Coinage" example AI, bug fixed, and changed it to use GetAllPossibleChange.
+Added examples "AllHigh" and "AllLow"
+
+v1.3 (2001.10.29)
+Minor fixes, now tested & working on:
+	MSVC++ v6 SP5
+	gcc version egcs-2.91.66 19990314/Linux (egcs-1.1.2 release)
+
+v1.2 (2001.10.29)
+Small fixes to build on gcc
+Sorted results tables, got rid of arbitrary "who won" message.
+
+v1.1 (2001.10.25)
+Responsibility for order-of-play factored out of Game class and into Tournament system.
+Tournament system now uses permutation algorithm or ensure 'fair' order-of-play.
+
+v1 (2001.10.24)
+Initial version
