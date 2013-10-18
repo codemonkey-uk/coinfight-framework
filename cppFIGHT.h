@@ -1,8 +1,8 @@
 // cppFIGHT v1.8
 // An AI Tournement Framework for "FIGHT!", a free game from Cheapass Games
-// (c) T.Frogley 2002.05.21
-//   http://thad.notagoth.org/cppfight/
-//   mailto:codemonkey_uk@hotmail.com
+// (c) T.Frogley 2002-2013
+//   http://thad.frogley.info/
+//   mailto:codemonkey.uk@gamail.com
 //
 // FIGHT! (c) Cheapass Games
 //   http://www.cheapass.com/fight.shtml

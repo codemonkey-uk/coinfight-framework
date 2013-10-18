@@ -1,17 +1,17 @@
 // cppFIGHT v1.7
 // An AI Tournement Framework for "FIGHT!", a free game from Cheapass Games
-// (c) T.Frogley 2002.04.09
+// (c) T.Frogley 2002-2013
 // With thanks also to Oscar Cooper
 //
 // See cppFIGHT.h for details
 //
-// Email bug reports to: codemonkey_uk@hotmail.com
+// Email bug reports to: codemonkey.uk@gmail.com
 //
 
 //
 // TODO:
 //
-//  Output HTML
+//  Output HTML/Other formats
 //
 
 //disable MSVC++ long symbols warning
@@ -409,6 +409,38 @@ namespace CPPFight {
 		return result;
 	}
 
+	// 
+	// non-member serialise functions
+	// 
+	void Serialise(FILE* f, const Change& change)
+	{
+		fprintf(f, "%ix%i, %ix%i, %ix%i, %ix%i\n", 
+			change.GetCount(PENNY),PENNY,
+			change.GetCount(NICKEL),NICKEL,
+			change.GetCount(DIME),DIME,
+			change.GetCount(QUARTER),QUARTER);
+	}
+	
+	void Serialise(FILE* f, const GameState& gameState)
+	{
+		fprintf(f, "%i %i\n", gameState.GetPlayerCount(), gameState.GetCurrentPlayer() );
+		Serialise( f, gameState.GetGameChange() );
+		for (int i=0;i!=gameState.GetPlayerCount();++i)
+		{
+			Serialise( f, gameState.GetPlayerChange(i) );
+		}
+	}
+	
+	void Serialise(FILE* f, const Move& move)
+	{
+		fprintf(f, "%i\n",move.GetCoin());
+		fprintf(f, "%ix%i, %ix%i, %ix%i, %ix%i\n", 
+			move.GetChange().GetCount(PENNY),PENNY,
+			move.GetChange().GetCount(NICKEL),NICKEL,
+			move.GetChange().GetCount(DIME),DIME,
+			move.GetChange().GetCount(QUARTER),QUARTER);
+	}
+	
 	//
 	//class Game
 	//
@@ -477,18 +509,7 @@ namespace CPPFight {
 				
 				try{
 					
-					/*
-					printf("Pool: %ix%i, %ix%i, %ix%i, %ix%i\n", 
-						myChange.GetCount(PENNY),PENNY,
-						myChange.GetCount(NICKEL),NICKEL,
-						myChange.GetCount(DIME),DIME,
-						myChange.GetCount(QUARTER),QUARTER);
-					printf("%4i: %ix%i, %ix%i, %ix%i, %ix%i\n", whosturn,
-						myPlayersChange[whosturn].GetCount(PENNY),PENNY,
-						myPlayersChange[whosturn].GetCount(NICKEL),NICKEL,
-						myPlayersChange[whosturn].GetCount(DIME),DIME,
-						myPlayersChange[whosturn].GetCount(QUARTER),QUARTER);
-					*/
+					Serialise(stderr, *this);
 					
 					myCurrentTurnClockStart = clock();
 
@@ -502,14 +523,7 @@ namespace CPPFight {
 					//if (*this!=firewall)
 					//	throw Exception();
 
-					/*
-					printf("Give: %i\n",move.GetCoin());
-					printf("Take: %ix%i, %ix%i, %ix%i, %ix%i\n\n", 
-						move.GetChange().GetCount(PENNY),PENNY,
-						move.GetChange().GetCount(NICKEL),NICKEL,
-						move.GetChange().GetCount(DIME),DIME,
-						move.GetChange().GetCount(QUARTER),QUARTER);
-					*/
+					Serialise(stderr, move);
 
 					myPlayersChange[whosturn].RemoveCoin( move.GetCoin() );
 					myChange.InsertCoin( move.GetCoin() );

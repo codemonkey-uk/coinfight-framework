@@ -2,9 +2,9 @@
   C API header for C++ Fight
   cFIGHT.h v1, for cppFIGHT v1.8
 
-  (c) T.Frogley 2002.05.21
-    http://thad.notagoth.org/cppfight/
-    mailto:codemonkey_uk@hotmail.com
+  (c) T.Frogley 2002-2013
+    http://thad.frogley.info
+    mailto:codemonkey.uk@gmail.com
 
   FIGHT! (c) Cheapass Games
     http://www.cheapass.com/fight.shtml
