@@ -180,6 +180,9 @@ namespace CPPFight
 	inline Change operator-(Change lhs, const Coin& rhs)
 	{ return lhs.RemoveCoin( rhs ); }
 
+	void Serialise(FILE* f, const Change& change);
+	bool Serialise(FILE* f, Change* change);
+	
 	//
 	// Move - each move consists of a coin given, and change taken.  The 
 	//        value of the change must be less than the value of the coin
@@ -216,6 +219,8 @@ namespace CPPFight
 			Change myTake;
 	};
 
+	void Serialise(FILE* f, const Move& move);
+	
 	//
 	// Game - (decleration required by Player class, defined later)
 	//
@@ -282,6 +287,7 @@ namespace CPPFight
 
 			int GetPlayerCount() const;		// how many players in the game
 			int GetCurrentPlayer() const;	// the current player index (ie you, if calling from inside Player::GetMove)
+			int GetCurrentTurn() const;
 			
 			//for iterating over players
 			int GetNextPlayer(int currentPlayerIndex) const;
@@ -297,8 +303,8 @@ namespace CPPFight
 			GameState PlayMove( Move move ) const;
 
 		protected:
-
 			GameState(int player_count);
+			GameState(FILE*);
 
 			int myTurn;
 			Change myChange;
@@ -311,11 +317,14 @@ namespace CPPFight
 	class Game : public GameState, public CFIGHT_Game {
 		public:
 			Game(int player_count);
+			Game(FILE *f, int player_count, int turn);
 			virtual int GetPlayerUID( int player ) const = 0; 
 			virtual clock_t GetPlayerTimeTaken( int player ) const = 0;
 			virtual ~Game()	{}
 	};
 
+	void Serialise(FILE* f, const GameState& gameState);
+	
 	const clock_t PLAYER_TIME_PER_GAME = CFIGHT_PLAYER_TIME_PER_GAME;
 
 }//namespace CPPFight

@@ -342,6 +342,11 @@ namespace CPPFight {
 	{
 		return myTurn%GetPlayerCount();
 	}
+	
+	int GameState::GetCurrentTurn() const 
+	{
+		return myTurn;
+	}
 
 	//for iterating over players
 	int GameState::GetNextPlayer(int currentPlayerIndex) const
@@ -408,38 +413,6 @@ namespace CPPFight {
 
 		return result;
 	}
-
-	// 
-	// non-member serialise functions
-	// 
-	void Serialise(FILE* f, const Change& change)
-	{
-		fprintf(f, "%ix%i, %ix%i, %ix%i, %ix%i\n", 
-			change.GetCount(PENNY),PENNY,
-			change.GetCount(NICKEL),NICKEL,
-			change.GetCount(DIME),DIME,
-			change.GetCount(QUARTER),QUARTER);
-	}
-	
-	void Serialise(FILE* f, const GameState& gameState)
-	{
-		fprintf(f, "%i %i\n", gameState.GetPlayerCount(), gameState.GetCurrentPlayer() );
-		Serialise( f, gameState.GetGameChange() );
-		for (int i=0;i!=gameState.GetPlayerCount();++i)
-		{
-			Serialise( f, gameState.GetPlayerChange(i) );
-		}
-	}
-	
-	void Serialise(FILE* f, const Move& move)
-	{
-		fprintf(f, "%i\n",move.GetCoin());
-		fprintf(f, "%ix%i, %ix%i, %ix%i, %ix%i\n", 
-			move.GetChange().GetCount(PENNY),PENNY,
-			move.GetChange().GetCount(NICKEL),NICKEL,
-			move.GetChange().GetCount(DIME),DIME,
-			move.GetChange().GetCount(QUARTER),QUARTER);
-	}
 	
 	//
 	//class Game
@@ -448,6 +421,26 @@ namespace CPPFight {
 	Game::Game(int player_count) : GameState(player_count)
 	{
 	}
+	
+	// create a new game from serialised state
+	Game::Game(FILE *f, int player_count, int turn)
+		: GameState(player_count)
+	{
+		myTurn=turn;
+		if (Serialise( f, &myChange ))
+		{
+			for (int i=0;i!=player_count;++i)
+			{
+				if (Serialise( f, &myPlayersChange[i] )==false)
+				{
+					throw Exception();
+				}
+			}
+		}
+		
+		// TOOD: Validate this game state is legitimately achievable
+	}
+	
 
 	//
 	// Tournament Game
@@ -459,7 +452,8 @@ namespace CPPFight {
 
 			//to construct a game pass it a list of players
 			TournamentGame (const PlayerList& players);
-
+			TournamentGame (const PlayerList& players, int turn, FILE *f);
+			
 			//plays out a game, calling out to players for moves and 
 			//returning the UID of the winning player
 			int PlayGame();
@@ -483,6 +477,10 @@ namespace CPPFight {
 		myPlayerClocks( players.size(), 0)
 	{	}
 
+	TournamentGame::TournamentGame(const PlayerList& players, int turn, FILE *f) :
+		Game( f, players.size(), turn )
+	{	}
+	
 	struct NotifyGameStartFn
 	{
 		NotifyGameStartFn( const Game& game )
@@ -535,11 +533,9 @@ namespace CPPFight {
 					//eliminate "cheaters" by taking all their money
 					myPlayersChange[whosturn].RemoveChange( myPlayersChange[whosturn] );
 					
-					/*
-					printf("Eliminated: %s by %s\n", 
+					fprintf(stderr, "Eliminated: %s by %s\n", 
 						myPlayerList[whosturn]->GetTitle().c_str(),
 						myPlayerList[whosturn]->GetAuthor().c_str());
-					*/
 				}
 
 				if (myPlayersChange[whosturn].IsEmpty())
@@ -551,14 +547,6 @@ namespace CPPFight {
 
 		//one active player left, find who...
 		const int result = GetNextActivePlayer(GetCurrentPlayer());
-		/*
-		for( int i=0;i!=GetPlayerCount();++i){
-			if (!myPlayersChange[i].IsEmpty()){
-				result=i;
-				break;
-			}
-		}*/
-
 		myPlayerList[result]->NotifyWon();
 		return myPlayerList[result]->GetUID();
 	}
@@ -581,6 +569,95 @@ namespace CPPFight {
 		return myPlayerClocks[player] + (clock()-myCurrentTurnClockStart);
 	}
 
+	// 
+	// non-member serialise functions
+	// 
+	
+	// Write Change
+	void Serialise(FILE* f, const Change& change)
+	{
+		fprintf(f, "%ix%i, %ix%i, %ix%i, %ix%i\n", 
+			change.GetCount(PENNY),PENNY,
+			change.GetCount(NICKEL),NICKEL,
+			change.GetCount(DIME),DIME,
+			change.GetCount(QUARTER),QUARTER);
+	}
+
+	// Read Change
+	bool Serialise(FILE* f, Change* change)
+	{
+		// empty
+		Change result;
+		
+		// read as written
+		int c[COIN_COUNT], d[COIN_COUNT];
+		if (fscanf(f, "%dx%d, %dx%d, %dx%d, %dx%d\n", 
+			&c[0],&d[0],
+			&c[1],&d[1],
+			&c[2],&d[2],
+			&c[3],&d[3])==8)
+		{			
+			for(int i=0;i!=COIN_COUNT;++i)
+			{
+				if (d[i]!=COINLIST[i]) return false;
+				result.InsertCoins((Coin)d[i],c[i]);
+			}
+			*change=result;
+			return true;
+		}
+		
+		return false;
+	}
+		
+	// Write Game
+	void Serialise(FILE* f, const GameState& gameState)
+	{
+		fprintf(f, "%i %i\n", gameState.GetPlayerCount(), gameState.GetCurrentTurn() );
+		Serialise( f, gameState.GetGameChange() );
+		for (int i=0;i!=gameState.GetPlayerCount();++i)
+		{
+			Serialise( f, gameState.GetPlayerChange(i) );
+		}
+	}
+	
+	bool Serialise(FILE* f, const PlayerList& all_players, TournamentGame** pGame)
+	{
+		bool success=false;
+		
+		*pGame=0;
+		int player_c, turn;
+		if (fscanf(f, "%d %d\n", &player_c, &turn )==2)
+		{
+			if (player_c<=all_players.size())
+			{
+				// create subset
+				PlayerList players(all_players);
+				players.resize(player_c);
+				
+				*pGame=new TournamentGame(players,turn,f);
+				success=true;
+			}
+			else
+			{
+				fprintf(stderr, "Too many players, read %i, maximum %i\n", 
+					player_c, static_cast<int>(all_players.size()));
+			}
+		}
+		
+		return success;
+	}
+	
+	// Write Move
+	void Serialise(FILE* f, const Move& move)
+	{
+		fprintf(f, "%i\n",move.GetCoin());
+		Serialise( f, move.GetChange() );
+	}
+	
+	//
+	// Utility functions
+	//
+	
 	// gets the largest value of change possible from a coin -----------------
 
 	Change MaximumChangeValue (const Change& availableChange, 
@@ -969,10 +1046,35 @@ int main(int argc, char* argv[])
 {
 	CFIGHT_CreateAllPlayers();
 
+	if (argc>1){
+		CPPFight::PlayerList players = 
+			CPPFight::PlayerRegister::Instance().GetPlayerList();
+	
+		int i;
+		for (i=0;i!=players.size();++i){
+			if (players[i]->GetTitle()==argv[1]){
+				fprintf(stderr,"AI Selected: %s by %s\n", 
+					players[i]->GetTitle().c_str(),
+					players[i]->GetAuthor().c_str());
+				break;
+			}
+		}
+		
+		if (i==players.size()) fprintf(stderr,"%s NOT FOUND\n", argv[1]);
+		else {
+			CPPFight::TournamentGame* pGame=0;
+			if (CPPFight::Serialise(stdin, players, &pGame))
+			{
+				CPPFight::Move move = players[i]->GetMove(*pGame);
+				CPPFight::Serialise(stdout, move);
+			}
+		}
+		return 0;
+	}
 	unsigned int i,errors = 0;
 	clock_t begin = clock();
 
-	printf("C++ FIGHT (c) T.Frogley 2001\n");
+	printf("C++ FIGHT (c) T.Frogley 2001,2002,2013\n");
 
 	//Round robin
 	std::map< int, int > rr_points_scores;	//total games won count
