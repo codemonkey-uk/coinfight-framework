@@ -1063,7 +1063,7 @@ int main(int argc, char* argv[])
 		if (i==players.size()) fprintf(stderr,"%s NOT FOUND\n", argv[1]);
 		else {
 			CPPFight::TournamentGame* pGame=0;
-			if (CPPFight::Serialise(stdin, players, &pGame))
+			while (CPPFight::Serialise(stdin, players, &pGame))
 			{
 				CPPFight::Move move = players[i]->GetMove(*pGame);
 				CPPFight::Serialise(stdout, move);
