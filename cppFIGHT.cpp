@@ -335,7 +335,7 @@ namespace CPPFight {
 
 	int GameState::GetPlayerCount() const 
 	{
-		return myPlayersChange.size();
+		return static_cast<int>(myPlayersChange.size());
 	}
 	
 	int GameState::GetCurrentPlayer() const 
@@ -472,13 +472,13 @@ namespace CPPFight {
 
 
 	TournamentGame::TournamentGame(const PlayerList& players) : 
-		Game( players.size() ),	  
+		Game( static_cast<int>(players.size()) ),
 		myPlayerList( players ),
 		myPlayerClocks( players.size(), 0)
 	{	}
 
 	TournamentGame::TournamentGame(const PlayerList& players, int turn, FILE *f) :
-		Game( f, players.size(), turn )
+		Game( f, static_cast<int>(players.size()), turn )
 	{	}
 	
 	struct NotifyGameStartFn
@@ -1065,8 +1065,11 @@ int main(int argc, char* argv[])
 			CPPFight::TournamentGame* pGame=0;
 			while (CPPFight::Serialise(stdin, players, &pGame))
 			{
+
 				CPPFight::Move move = players[i]->GetMove(*pGame);
 				CPPFight::Serialise(stdout, move);
+				delete pGame;
+
 			}
 		}
 		return 0;
@@ -1185,7 +1188,10 @@ int main(int argc, char* argv[])
 		std::map< int, int > scores;
 		
 		std::vector< CPPFight::PlayerList > groups(tournement.size()/6+1);
-		printf(" Round %i - %i players, %i groups\n",round,tournement.size(),groups.size());
+		printf(" Round %i - %i players, %i groups\n",
+               round,
+               static_cast<int>(tournement.size()),
+               static_cast<int>(groups.size()));
 		for(unsigned int i=0;i!=tournement.size();++i){
 			groups[ i%groups.size() ].push_back( tournement[i] );
 		}
@@ -1209,7 +1215,9 @@ int main(int argc, char* argv[])
 			}while(std::next_permutation(playerList.begin(), playerList.end()));
 
 
-			printf("  Group %i, %i players.  Scores:\n", g+1, groups[g].size() );
+			printf("  Group %i, %i players.  Scores:\n",
+                   g+1,
+                   static_cast<int>(groups[g].size()) );
 			std::sort( groups[g].begin(), groups[g].end(),	CompScores(scores) );
 			for(unsigned int i=0;i<groups[g].size();++i){
 				printf("    %i - %s by %s\n", 
