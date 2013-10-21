@@ -54,6 +54,7 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "pplayer.h"
 
 //implementation
 namespace CPPFight {
@@ -588,15 +589,18 @@ namespace CPPFight {
 	{
 		// empty
 		Change result;
-		
+		fprintf(stderr,"Reading change\n");fflush(stderr);
 		// read as written
 		int c[COIN_COUNT], d[COIN_COUNT];
+		fsync(fileno(stdout));
+		fflush(f);
 		if (fscanf(f, "%dx%d, %dx%d, %dx%d, %dx%d\n", 
 			&c[0],&d[0],
 			&c[1],&d[1],
 			&c[2],&d[2],
 			&c[3],&d[3])==8)
 		{			
+			fprintf(stderr,"Read change\n");fflush(stderr);
 			for(int i=0;i!=COIN_COUNT;++i)
 			{
 				if (d[i]!=COINLIST[i]) return false;
@@ -605,7 +609,7 @@ namespace CPPFight {
 			*change=result;
 			return true;
 		}
-		
+		fprintf(stderr,"Failed to read change\n");fflush(stderr);
 		return false;
 	}
 		
@@ -654,6 +658,35 @@ namespace CPPFight {
 		Serialise( f, move.GetChange() );
 	}
 	
+	// Read Move
+	bool Serialise(FILE* f, Move* pMove)
+	{
+		bool result=false;
+
+		int coin;
+		if (fscanf(f, "%d\n",&coin)==1)
+		{
+			fprintf(stderr,"Reading move: %i",coin);
+			fflush(stderr);
+			
+			// TODO: Validate "coin" is a valid Coin value
+			Coin give=(Coin)coin;
+			Change take;
+			if (Serialise(f, &take))
+			{
+				*pMove = Move(give, take);
+				
+				fprintf(stderr,"Got move:\n");				
+				Serialise(stderr,*pMove);
+				fflush(stderr);
+				
+				result=true;
+			}
+		}
+		
+		return result;
+	}
+		
 	//
 	// Utility functions
 	//
@@ -1021,7 +1054,7 @@ CPPFight_GameState CPPFight_Game_GetGameState( CPPFight_Game the ){
 }
 
 //
-// main application / torunement
+// main application / tournament
 //
 
 // comparison functor for sorting players based on score
@@ -1046,6 +1079,8 @@ int main(int argc, char* argv[])
 {
 	CFIGHT_CreateAllPlayers();
 
+	POpenPlayer test("", "External", "Test");
+	
 	if (argc>1){
 		CPPFight::PlayerList players = 
 			CPPFight::PlayerRegister::Instance().GetPlayerList();
@@ -1060,14 +1095,37 @@ int main(int argc, char* argv[])
 			}
 		}
 		
-		if (i==players.size()) fprintf(stderr,"%s NOT FOUND\n", argv[1]);
+		if (i==players.size())
+		{
+			fprintf(stderr,"%s NOT FOUND\n", argv[1]);
+			CPPFight::Move test(CPPFight::PENNY);
+			if (CPPFight::Serialise(stdin, &test))
+				CPPFight::Serialise(stdout, test);
+			else
+				fprintf(stderr,"NOPE\n");
+		}
 		else {
 			CPPFight::TournamentGame* pGame=0;
+			fprintf(stderr,"%s reading...\n", players[i]->GetTitle().c_str());
 			while (CPPFight::Serialise(stdin, players, &pGame))
 			{
-				CPPFight::Move move = players[i]->GetMove(*pGame);
-				CPPFight::Serialise(stdout, move);
+				fprintf(stderr,"%s got game, thinking...\n", players[i]->GetTitle().c_str());
+				try{
+					CPPFight::Move move = players[i]->GetMove(*pGame);
+					fprintf(stderr,"%s Decided.\n", players[i]->GetTitle().c_str());
+					CPPFight::Serialise(stdout, move);
+					fflush(stdout);
+					fsync(fileno(stdout));
+					fprintf(stderr,"%s replied.\n", players[i]->GetTitle().c_str());
+					CPPFight::Serialise(stderr, move);					
+				}
+				catch(...){
+					fprintf(stderr,"%s threw an exception, ending\n", 
+						players[i]->GetTitle().c_str());
+					return -1;
+				}
 			}
+			fprintf(stderr,"%s done.\n", players[i]->GetTitle().c_str());
 		}
 		return 0;
 	}
@@ -1185,7 +1243,10 @@ int main(int argc, char* argv[])
 		std::map< int, int > scores;
 		
 		std::vector< CPPFight::PlayerList > groups(tournement.size()/6+1);
-		printf(" Round %i - %i players, %i groups\n",round,tournement.size(),groups.size());
+		printf(" Round %i - %i players, %i groups\n",
+			round,
+			static_cast<int>(tournement.size()),
+			static_cast<int>(groups.size()));
 		for(unsigned int i=0;i!=tournement.size();++i){
 			groups[ i%groups.size() ].push_back( tournement[i] );
 		}
@@ -1209,7 +1270,9 @@ int main(int argc, char* argv[])
 			}while(std::next_permutation(playerList.begin(), playerList.end()));
 
 
-			printf("  Group %i, %i players.  Scores:\n", g+1, groups[g].size() );
+			printf("  Group %i, %i players.  Scores:\n", 
+				g+1, 
+				static_cast<int>(groups[g].size()) );
 			std::sort( groups[g].begin(), groups[g].end(),	CompScores(scores) );
 			for(unsigned int i=0;i<groups[g].size();++i){
 				printf("    %i - %s by %s\n", 

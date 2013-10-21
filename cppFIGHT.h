@@ -220,6 +220,7 @@ namespace CPPFight
 	};
 
 	void Serialise(FILE* f, const Move& move);
+	bool Serialise(FILE* f, Move* pMove);
 	
 	//
 	// Game - (decleration required by Player class, defined later)
