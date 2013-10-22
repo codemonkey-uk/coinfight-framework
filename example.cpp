@@ -8,6 +8,7 @@
 // See also cppFIGHT.h
 //
 
+#include <stdlib.h>
 #include "cppFIGHT.h"
 
 //namespace for ExamplesTeam

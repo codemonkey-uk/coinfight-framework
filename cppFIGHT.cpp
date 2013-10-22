@@ -336,7 +336,7 @@ namespace CPPFight {
 
 	int GameState::GetPlayerCount() const 
 	{
-		return myPlayersChange.size();
+		return static_cast<int>(myPlayersChange.size());
 	}
 	
 	int GameState::GetCurrentPlayer() const 
@@ -473,13 +473,13 @@ namespace CPPFight {
 
 
 	TournamentGame::TournamentGame(const PlayerList& players) : 
-		Game( players.size() ),	  
+		Game( static_cast<int>(players.size()) ),
 		myPlayerList( players ),
 		myPlayerClocks( players.size(), 0)
 	{	}
 
 	TournamentGame::TournamentGame(const PlayerList& players, int turn, FILE *f) :
-		Game( f, players.size(), turn )
+		Game( f, static_cast<int>(players.size()), turn )
 	{	}
 	
 	struct NotifyGameStartFn
@@ -669,7 +669,6 @@ namespace CPPFight {
 			if (Serialise(f, &take))
 			{
 				*pMove = Move(give, take);			
-				Serialise(stderr,*pMove);
 				result=true;
 			}
 		}
@@ -1091,34 +1090,22 @@ int main(int argc, char* argv[])
 		if (i==players.size())
 		{
 			fprintf(stderr,"%s NOT FOUND\n", argv[1]);
-			CPPFight::Move test(CPPFight::PENNY);
-			if (CPPFight::Serialise(stdin, &test))
-				CPPFight::Serialise(stdout, test);
-			else
-				fprintf(stderr,"NOPE\n");
 		}
 		else {
 			CPPFight::TournamentGame* pGame=0;
-			fprintf(stderr,"%s reading...\n", players[i]->GetTitle().c_str());
 			while (CPPFight::Serialise(stdin, players, &pGame))
 			{
-				fprintf(stderr,"%s got game, thinking...\n", players[i]->GetTitle().c_str());
 				try{
 					CPPFight::Move move = players[i]->GetMove(*pGame);
-					fprintf(stderr,"%s Decided.\n", players[i]->GetTitle().c_str());
-					CPPFight::Serialise(stdout, move);
-					fflush(stdout);
-					fsync(fileno(stdout));
-					fprintf(stderr,"%s replied.\n", players[i]->GetTitle().c_str());
-					CPPFight::Serialise(stderr, move);					
+					CPPFight::Serialise(stdout, move);				
 				}
 				catch(...){
 					fprintf(stderr,"%s threw an exception, ending\n", 
 						players[i]->GetTitle().c_str());
 					return -1;
 				}
+
 			}
-			fprintf(stderr,"%s done.\n", players[i]->GetTitle().c_str());
 		}
 		return 0;
 	}
@@ -1234,12 +1221,12 @@ int main(int argc, char* argv[])
 	int round=1;
 	while(tournement.size()>1){
 		std::map< int, int > scores;
-		
 		std::vector< CPPFight::PlayerList > groups(tournement.size()/6+1);
 		printf(" Round %i - %i players, %i groups\n",
 			round,
 			static_cast<int>(tournement.size()),
 			static_cast<int>(groups.size()));
+
 		for(unsigned int i=0;i!=tournement.size();++i){
 			groups[ i%groups.size() ].push_back( tournement[i] );
 		}
@@ -1266,6 +1253,8 @@ int main(int argc, char* argv[])
 			printf("  Group %i, %i players.  Scores:\n", 
 				g+1, 
 				static_cast<int>(groups[g].size()) );
+
+
 			std::sort( groups[g].begin(), groups[g].end(),	CompScores(scores) );
 			for(unsigned int i=0;i<groups[g].size();++i){
 				printf("    %i - %s by %s\n", 
