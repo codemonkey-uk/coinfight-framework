@@ -589,7 +589,6 @@ namespace CPPFight {
 	{
 		// empty
 		Change result;
-		fprintf(stderr,"Reading change\n");fflush(stderr);
 		// read as written
 		int c[COIN_COUNT], d[COIN_COUNT];
 		fsync(fileno(f));
@@ -600,7 +599,6 @@ namespace CPPFight {
 			&c[2],&d[2],
 			&c[3],&d[3])==8)
 		{			
-			fprintf(stderr,"Read change\n");fflush(stderr);
 			for(int i=0;i!=COIN_COUNT;++i)
 			{
 				if (d[i]!=COINLIST[i]) return false;
@@ -609,7 +607,6 @@ namespace CPPFight {
 			*change=result;
 			return true;
 		}
-		fprintf(stderr,"Failed to read change\n");fflush(stderr);
 		return false;
 	}
 		
@@ -666,20 +663,13 @@ namespace CPPFight {
 		int coin;
 		if (fscanf(f, "%d\n",&coin)==1)
 		{
-			fprintf(stderr,"Reading move: %i",coin);
-			fflush(stderr);
-			
 			// TODO: Validate "coin" is a valid Coin value
 			Coin give=(Coin)coin;
 			Change take;
 			if (Serialise(f, &take))
 			{
-				*pMove = Move(give, take);
-				
-				fprintf(stderr,"Got move:\n");				
+				*pMove = Move(give, take);			
 				Serialise(stderr,*pMove);
-				fflush(stderr);
-				
 				result=true;
 			}
 		}
@@ -1079,7 +1069,10 @@ int main(int argc, char* argv[])
 {
 	CFIGHT_CreateAllPlayers();
 
-	POpenPlayer test("", "External", "Test");
+	std::vector<std::string> args;
+	args.push_back("./a.out");
+	args.push_back("AllLow");
+	POpenPlayer test(args, "External", "Test");
 	
 	if (argc>1){
 		CPPFight::PlayerList players = 

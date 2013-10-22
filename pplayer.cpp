@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +15,6 @@ using namespace CPPFight;
 #define WRITE 1
 
 pid_t
-//popen2(const char *command, int *infp, int *outfp)
 popen2(char **command, int *infp, int *outfp)
 {
     int p_stdin[2], p_stdout[2];
@@ -55,42 +55,54 @@ popen2(char **command, int *infp, int *outfp)
     return pid;
 }
 
-POpenPlayer::POpenPlayer( const std::string& command,
-	const std::string& title, const std::string& author ) 
-: Player(title, author), mCommand(command)
+POpenPlayer::POpenPlayer( 
+	const std::vector<std::string>& commands,
+	const std::string& title, 
+	const std::string& author ) 
+: Player(title, author)
+, mCommands(new char*[commands.size()+1])
 {
-	myPid = 0;//popen2(command.c_str(), &myInFp, &myOutFp);
-	m_pIn = 0;//fdopen(myInFp, "w");
-	m_pOut =0;//fdopen(myOutFp, "r");		
+	for (int i=0;i!=commands.size();++i)
+		mCommands[i]=strdup(commands[i].c_str());
+	mCommands[commands.size()]=0;
+}
+
+POpenPlayer::~POpenPlayer()
+{
+	int n=0;
+	while(mCommands[n])
+	{
+		free(mCommands[n]);
+		++n;
+	}
+	delete[] mCommands;
 }
 
 Move POpenPlayer::GetMove( const Game& theGame )
 {
-	//if (myPid==0)
-	//{
-		//myPid = popen2(mCommand.c_str(), &myInFp, &myOutFp);
-		char *command[] = {"./a.out", "AllLow", NULL};
-		myPid = popen2(command, &myInFp, &myOutFp);
-		m_pIn = fdopen(myInFp, "w");
-		m_pOut = fdopen(myOutFp, "r");
-	//}
-	
-	// write game state to in
-	fprintf(stderr,"Writing game state to child process...");
-	Serialise(m_pIn, theGame);
-	
-	fflush(m_pIn);
-	fclose(m_pIn);
-	
-	// read move from out
-	fprintf(stderr,"\nWaiting for response...");	
-	Move result(PENNY);
-	if (Serialise(m_pOut,&result)==false)
+	int inFp;
+	int outFp;
+	pid_t pid = popen2(mCommands, &inFp, &outFp);
+	if (pid<0) 
 		throw Exception();
 	
-	fflush(m_pOut);
-	fclose(m_pOut);
+	FILE* pIn = fdopen(inFp, "w");
+	FILE* pOut = fdopen(outFp, "r");
+		
+	// write game state to in
+	Serialise(pIn, theGame);
+	fclose(pIn);
 	
-	fprintf(stderr,"\nFinished move!\n");	
+	// wait for the child process to finish
+	int status;
+	if  (waitpid(pid, &status, 0)!=pid)
+		throw Exception();
+			
+	// read move from out
+	Move result(PENNY);
+	if (Serialise(pOut,&result)==false)
+		throw Exception();
+	fclose(pOut);
+	
 	return result;	
 }
