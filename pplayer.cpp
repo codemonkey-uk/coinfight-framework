@@ -40,11 +40,13 @@ popen2(char **command, int *infp, int *outfp)
         exit(1);
     }
 
+	close(p_stdin[READ]);
     if (infp == NULL)
         close(p_stdin[WRITE]);
     else
         *infp = p_stdin[WRITE];
 
+	close(p_stdout[WRITE]);
     if (outfp == NULL)
         close(p_stdout[READ]);
     else
