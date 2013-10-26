@@ -1,6 +1,29 @@
 C & C++ Fight Change Log
 ------------------------
 
+v1.9 (2013.10.26)
+
+* Added the ability to add a bot written in any language to the player list.
+External bots are implemented as console applications, which tread game-state from std-in,
+and write their move to std out. External bots are added via the command line, like so:
+
+  -n"command-line" "Bot Name" "Author Name"
+  
+* Added the ability to run any chosen bot in "single move mode", accepting game state on 
+std-in and writing game state to std-out. Single move mode is selected via the command:
+
+  -m"Bot Name"
+  
+Note: These two features can be tested together:
+
+  ./a.out -n"./a.out -mGreedy" ExternalBot Mandelbrot
+
+* Added example game state "game.txt". Game state has the first line:
+[Player Count] [Move Number]
+The next [Player Count]+1 lines are in the form:
+[Quantity]x[Face Value],[...]
+With the 1st being the game change pool, and the rest being the players current change.
+
 v1.8b (2003.04.22)
 Adjustment to tournament system so ties are handled in as fair a way as possible.
 Warning fixed.
@@ -9,6 +32,7 @@ Tested on:  gcc version 2.95, and MSVC 6
 
 v1.8a (2003.04.17)
 Improvements to compiler support for C API when using a C++ compiler.
+
 
 v1.8 (2002.05.21)
 Added C API, and some support for same in C++
