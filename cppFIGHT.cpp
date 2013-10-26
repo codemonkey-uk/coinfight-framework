@@ -56,6 +56,8 @@
 
 #include "pplayer.h"
 
+bool gVerbose = false;
+
 //implementation
 namespace CPPFight {
 
@@ -508,7 +510,7 @@ namespace CPPFight {
 				
 				try{
 					
-					Serialise(stderr, *this);
+					if (gVerbose) Serialise(stderr, *this);
 					
 					myCurrentTurnClockStart = clock();
 
@@ -522,7 +524,7 @@ namespace CPPFight {
 					//if (*this!=firewall)
 					//	throw Exception();
 
-					Serialise(stderr, move);
+					if (gVerbose) Serialise(stderr, move);
 
 					myPlayersChange[whosturn].RemoveCoin( move.GetCoin() );
 					myChange.InsertCoin( move.GetCoin() );
@@ -1064,46 +1066,149 @@ class CompScores
 
 extern "C" { void CFIGHT_CreateAllPlayers(); }
 
+void Split(const std::string& in, char c, std::vector<std::string>* pOut)
+{
+	std::string::const_iterator i = in.begin();
+	while(i!=in.end()){
+		std::string::const_iterator j = std::find(i,in.end(),c);
+		pOut->push_back(std::string(i,j));
+		if (j!=in.end()) ++j;
+		i=j;
+	}	
+}
+
+void AddCLPlayer(
+	const std::string& commandline, 
+	const std::string& ai_name, 
+	const std::string& author)
+{
+	if (commandline.empty()==false)
+	{
+		std::vector<std::string> args;
+		Split(commandline, ' ', &args );
+	
+		// self registers instance, permanently available
+		// (doesn't 'leak', cleaned up by OS on app exit!)
+		new POpenPlayer(args, ai_name, author);
+	}
+}
+
+void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
+{
+	const int state_root=0;
+	const int state_command=0;
+	int state=state_root;
+	
+	std::string command, ai_name, author;
+	for (int i=0;i<argc;++i)
+	{
+		if (*argv[i]=='-')
+		{
+			if (!command.empty())
+			{
+				AddCLPlayer( command, ai_name, author );
+				command="";
+				ai_name="";
+				author="";
+			}
+			
+			// add New (externally implemented) bot
+			int ii=i;
+			char mode = *(argv[i]+1);
+			if (mode) 
+			{
+				if (*(argv[i]+2)!=0) {
+					command = (argv[i]+2);
+				}
+				else
+				{
+					++i;
+					if (i!=argc & argv[i]!=0) command = argv[i];
+				}
+			}
+			
+			// N = New AI (continued)
+			switch (mode){
+				case 'm':
+					pMoves->push_back(command);
+					command="";
+					break;
+				case 'n':
+					break;
+				case 'x':
+					// TODO: exclude AI
+					break;
+				case 'v':
+					gVerbose=true;
+					command="";
+					break;
+				default:
+					fprintf(stderr,"Unrecognised command %s\n", argv[ii]);
+					exit(-1);
+			}
+		}
+		else if (!command.empty() && ai_name.empty())
+		{
+			ai_name = argv[i];
+		}
+		else if (!command.empty() && !ai_name.empty() && author.empty())
+		{
+			author = argv[i];
+		}
+		else if (command.empty())
+		{
+			// unexpected
+		}
+	}
+
+	AddCLPlayer(command, ai_name, author);
+}
+
 int main(int argc, char* argv[])
 {
 	CFIGHT_CreateAllPlayers();
-
-	std::vector<std::string> args;
-	args.push_back("./a.out");
-	args.push_back("AllLow");
-	POpenPlayer test(args, "External", "Test");
 	
-	if (argc>1){
+	std::vector<std::string> moves;
+	AddCLPlayers(argc, argv, &moves);
+	
+	if (!moves.empty()) {
+		
 		CPPFight::PlayerList players = 
 			CPPFight::PlayerRegister::Instance().GetPlayerList();
 	
 		int i;
 		for (i=0;i!=players.size();++i){
-			if (players[i]->GetTitle()==argv[1]){
-				fprintf(stderr,"AI Selected: %s by %s\n", 
-					players[i]->GetTitle().c_str(),
-					players[i]->GetAuthor().c_str());
+			if (players[i]->GetTitle()==moves[0]){
+				if (gVerbose) 
+				{
+					fprintf(stderr,"AI Selected: %s by %s\n", 
+						players[i]->GetTitle().c_str(),
+						players[i]->GetAuthor().c_str());
+				}
 				break;
 			}
 		}
 		
 		if (i==players.size())
 		{
-			fprintf(stderr,"%s NOT FOUND\n", argv[1]);
+			fprintf(stderr,"'%s' NOT FOUND\n", moves[0].c_str());
 		}
 		else {
 			CPPFight::TournamentGame* pGame=0;
-			while (CPPFight::Serialise(stdin, players, &pGame))
+			if (CPPFight::Serialise(stdin, players, &pGame))
 			{
 				try{
 					CPPFight::Move move = players[i]->GetMove(*pGame);
-					CPPFight::Serialise(stdout, move);				
+					CPPFight::Serialise(stdout, move);			
 				}
 				catch(...){
 					fprintf(stderr,"%s threw an exception, ending\n", 
 						players[i]->GetTitle().c_str());
 					return -1;
 				}
+				// delete the TournamentGame created by Serialise
+				delete pGame;
+				pGame=0;
 
 			}
 		}
