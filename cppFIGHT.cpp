@@ -1158,11 +1158,7 @@ void AddCLPlayer(
 }
 
 void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
-{
-	const int state_root=0;
-	const int state_command=0;
-	int state=state_root;
-	
+{	
 	std::string command, ai_name, author;
 	for (int i=0;i<argc;++i)
 	{
