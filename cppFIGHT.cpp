@@ -116,7 +116,18 @@ namespace CPPFight {
 	}
 
 	// gets the index of the specified coin ----------------------------------
-
+	class CoinException : public Exception 
+	{
+		public:
+		CoinException(Coin c) {
+			char buffer[256];
+			sprintf(buffer,"%i is not a valid Coin.", c);
+			mError=buffer;
+		}
+		virtual std::string ToString() { return mError; }
+		std::string mError;
+	};
+	
 	inline int GetCoinIndex( const Coin coinType )
 	{
 		switch(coinType){
@@ -129,7 +140,7 @@ namespace CPPFight {
 			case QUARTER:
 				return 3;
 			default:
-				throw Exception();		
+				throw CoinException(coinType);		
 		}
 	}
 
@@ -183,6 +194,28 @@ namespace CPPFight {
 	//
 	// class Change
 	//
+	
+	class ChangeException : public Exception 
+	{
+		public:
+		ChangeException(Coin c, int n) {
+			char buffer[256];
+			sprintf(buffer,"Change error removing: %ix%i\n", n,c);
+			mError=buffer;
+		}
+		ChangeException(const Change& change)
+		{
+			char buffer[256];
+			sprintf(buffer,"Change error removing: %ix%i, %ix%i, %ix%i, %ix%i",
+				change.GetCount(PENNY),PENNY,
+				change.GetCount(NICKEL),NICKEL,
+				change.GetCount(DIME),DIME,
+				change.GetCount(QUARTER),QUARTER);
+			mError=buffer;
+		}
+		virtual std::string ToString() { return mError; }
+		std::string mError;
+	};
 
 	Change::Change(){
 		std::fill_n( myChange, COIN_COUNT, 0 );
@@ -239,7 +272,7 @@ namespace CPPFight {
 	//remove coins from change
 	Change& Change::RemoveCoins(Coin c, unsigned int n) {
 		if (CoinArray::RemoveCoins( myChange, c, n )!=n)
-			throw Exception();
+			throw ChangeException(c,n);
 
 		return *this;
 	}
@@ -263,7 +296,7 @@ namespace CPPFight {
 	//extract a specific set of change
 	Change& Change::RemoveChange(const Change& c){
 		if (CoinArray::RemoveCoins( myChange, c.myChange  )!=c.GetTotalCount())
-			throw Exception();
+			throw ChangeException(c);
 
 		return *this;
 	}
@@ -522,8 +555,9 @@ namespace CPPFight {
 		do{
 			const int whosturn = GetCurrentPlayer();
 			
-			if (!myPlayersChange[whosturn].IsEmpty()){
-				
+			if (!myPlayersChange[whosturn].IsEmpty())
+			{
+				bool okay=false;	
 				try{
 					
 					if (gVerbose) Serialise(stderr, *this);
@@ -546,15 +580,30 @@ namespace CPPFight {
 					myChange.InsertCoin( move.GetCoin() );
 					myChange.RemoveChange( move.GetChange() );
 					myPlayersChange[whosturn].InsertChange( move.GetChange() );
+					
+					okay=true;
+				}
+				catch(Exception& e)
+				{
+					fprintf(stderr, "Caught Exception: %s\n", e.ToString().c_str());	
 				}
 				catch(...)
 				{
-					//eliminate "cheaters" by taking all their money
-					myPlayersChange[whosturn].RemoveChange( myPlayersChange[whosturn] );
-					
+					fprintf(stderr, "Caught unknown Exception running.\n");
+				}
+				
+				if (!okay)
+				{
 					fprintf(stderr, "Eliminated: %s by %s\n", 
 						myPlayerList[whosturn]->GetTitle().c_str(),
 						myPlayerList[whosturn]->GetAuthor().c_str());
+						
+					fprintf(stderr, "Eliminated player had:\n");
+					Serialise(stderr, myPlayersChange[whosturn]);
+					fprintf(stderr, "\n");
+					
+					//eliminate "cheaters" by taking all their money
+					myPlayersChange[whosturn].RemoveChange( myPlayersChange[whosturn] );
 				}
 
 				if (myPlayersChange[whosturn].IsEmpty())

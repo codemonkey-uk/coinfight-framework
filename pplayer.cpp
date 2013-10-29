@@ -34,9 +34,9 @@ popen2(char **command, int *infp, int *outfp)
         close(p_stdout[READ]);
         dup2(p_stdout[WRITE], WRITE);
 
-        //execl("/bin/sh", "sh", "-c", command, NULL);
         execvp(*command, command);
-        perror("execl");
+        fprintf(stderr, "Failed to launch '%s', error:\n\t",*command);
+        perror("execvp");
         exit(1);
     }
 
@@ -78,13 +78,22 @@ POpenPlayer::~POpenPlayer()
 	delete[] mCommands;
 }
 
+class MessageException : public Exception 
+{
+	public:
+	MessageException(const std::string& error) : mError(error) {}
+	virtual std::string ToString() { return mError; }
+	std::string mError;
+};
+		
 Move POpenPlayer::GetMove( const Game& theGame )
 {
 	int inFp;
 	int outFp;
 	pid_t pid = popen2(mCommands, &inFp, &outFp);
-	if (pid<0) 
-		throw Exception();
+	if (pid<0) {
+		throw MessageException("C call to 'fork' failed launching bot.");
+	}
 	
 	FILE* pIn = fdopen(inFp, "w");
 	FILE* pOut = fdopen(outFp, "r");
@@ -96,12 +105,15 @@ Move POpenPlayer::GetMove( const Game& theGame )
 	// wait for the child process to finish
 	int status;
 	if  (waitpid(pid, &status, 0)!=pid)
-		throw Exception();
+		throw MessageException("C call to 'waitpid' failed waiting for bot.");
 			
 	// read move from out
 	Move result(PENNY);
 	if (Serialise(pOut,&result)==false)
-		throw Exception();
+	{
+		// TODO: rewrite (de)serialisation code so we can collect & report the output
+		throw MessageException("Failed to deserialise response.");
+	}
 	fclose(pOut);
 	
 	return result;	

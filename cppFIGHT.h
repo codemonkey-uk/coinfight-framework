@@ -73,10 +73,17 @@ namespace CPPFight
 
 	//exception classes - (more to come later)
 	class Exception
-	{};
+	{
+		public: 
+			virtual std::string ToString() { return "Generic Game Exception."; }
+			virtual ~Exception() {};
+	};
 
 	class OutOfTimeException : public Exception
-	{};
+	{
+		public: 
+			virtual std::string ToString() { return "Out of Time!"; }
+	};
 
 	//
 	// Change - some change, a collection of coins
@@ -191,7 +198,9 @@ namespace CPPFight
 		public:
 			
 			//illegal moves should be imposible to construct
-			class Illegal : public Exception {};
+			class Illegal : public Exception {
+				virtual std::string ToString() { return "Illegal Move!"; }
+			};
 			
 			//construct move
 			Move(Coin give, const Change& take);
