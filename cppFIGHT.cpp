@@ -593,8 +593,7 @@ namespace CPPFight {
 		Change result;
 		// read as written
 		int c[COIN_COUNT], d[COIN_COUNT];
-		fsync(fileno(f));
-		fflush(f);
+
 		if (fscanf(f, "%dx%d, %dx%d, %dx%d, %dx%d\n", 
 			&c[0],&d[0],
 			&c[1],&d[1],
