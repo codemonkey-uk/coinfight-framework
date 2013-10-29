@@ -152,16 +152,32 @@ namespace CPPFight {
 			{
 				//!!! TODO check for "badness"
 				myRegisteredPlayers.push_back(player);
+				myActivePlayers.push_back(player);
 			}
 
+			void Exclude(std::string& match)
+			{
+				PlayerList filtered;
+				filtered.reserve(myActivePlayers.size());
+				for(PlayerList::iterator i = myActivePlayers.begin(); 
+					i!=myActivePlayers.end(); ++i) {
+					if ((*i)->GetTitle()!=match && (*i)->GetAuthor()!=match)
+						filtered.push_back(*i);
+				}
+				myActivePlayers.swap(filtered);
+			}
+			
 			// get all players registered at time of calling
-			const PlayerList& GetPlayerList () const {return myRegisteredPlayers;}
+			const PlayerList& GetPlayerList () const {
+				return myActivePlayers;
+			}
 
 		private:
 			PlayerRegister()
 			{}
-		
+			
 			PlayerList myRegisteredPlayers;
+			PlayerList myActivePlayers;
 	};
 
 	//
@@ -1135,7 +1151,8 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 				case 'n':
 					break;
 				case 'x':
-					// TODO: exclude AI
+					CPPFight::PlayerRegister::Instance().Exclude(command);
+					command="";
 					break;
 				case 'v':
 					gVerbose=true;
