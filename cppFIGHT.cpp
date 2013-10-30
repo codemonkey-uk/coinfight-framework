@@ -54,9 +54,18 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <sys/times.h>
+
 #include "pplayer.h"
 
 bool gVerbose = false;
+int ticks_per_s = sysconf(_SC_CLK_TCK);
+
+extern "C" int CFIGHT_GetPlayerTicksPerGame()
+{
+	static const int ticks = sysconf(_SC_CLK_TCK);
+	return ticks*30;
+}
 
 //implementation
 namespace CPPFight {
@@ -551,7 +560,8 @@ namespace CPPFight {
 		games_played++;
 
 		std::for_each(myPlayerList.begin(),myPlayerList.end(),NotifyGameStartFn(*this));
-
+		std::fill(myPlayerClocks.begin(),myPlayerClocks.end(),0);
+		
 		do{
 			const int whosturn = GetCurrentPlayer();
 			
@@ -562,12 +572,13 @@ namespace CPPFight {
 					
 					if (gVerbose) Serialise(stderr, *this);
 					
-					myCurrentTurnClockStart = clock();
-
 					TournamentGame firewall(*this);
-					Move move = myPlayerList[whosturn]->GetMove(firewall);
 					
-					myPlayerClocks[whosturn] += (clock()-myCurrentTurnClockStart);
+					tms t;
+					myCurrentTurnClockStart = times(&t);
+					Move move = myPlayerList[whosturn]->GetMove(firewall);					
+					myPlayerClocks[whosturn] += (times(&t)-myCurrentTurnClockStart);
+					
 					if (myPlayerClocks[whosturn]>PLAYER_TIME_PER_GAME)
 						throw OutOfTimeException();
 
@@ -594,13 +605,16 @@ namespace CPPFight {
 				
 				if (!okay)
 				{
-					fprintf(stderr, "Eliminated: %s by %s\n", 
+					fprintf(stderr, "Eliminated: %s by %s on turn %i\n", 
 						myPlayerList[whosturn]->GetTitle().c_str(),
-						myPlayerList[whosturn]->GetAuthor().c_str());
+						myPlayerList[whosturn]->GetAuthor().c_str(),
+						GetCurrentTurn());
 						
 					fprintf(stderr, "Eliminated player had:\n");
 					Serialise(stderr, myPlayersChange[whosturn]);
-					fprintf(stderr, "\n");
+					fprintf(stderr, "after %fs of %fs.\n", 
+						(float)myPlayerClocks[whosturn]/ticks_per_s,
+						(float)PLAYER_TIME_PER_GAME/ticks_per_s);
 					
 					//eliminate "cheaters" by taking all their money
 					myPlayersChange[whosturn].RemoveChange( myPlayersChange[whosturn] );
@@ -634,7 +648,8 @@ namespace CPPFight {
 		if (player<0 || player>=GetPlayerCount())
 			throw Exception();
 
-		return myPlayerClocks[player] + (clock()-myCurrentTurnClockStart);
+		tms t;
+		return myPlayerClocks[player] + (times(&t)-myCurrentTurnClockStart);
 	}
 
 	// 
@@ -1276,7 +1291,8 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	unsigned int i,errors = 0;
-	clock_t begin = clock();
+	tms t;
+	clock_t begin = times(&t);
 
 	printf("C++ FIGHT (c) T.Frogley 2001,2002,2013\n");
 
@@ -1456,8 +1472,7 @@ int main(int argc, char* argv[])
 	//printf("\n  And the winner is: %s by %s\n\n", 
 	//				tournement[0]->GetTitle().c_str(),
 	//				tournement[0]->GetAuthor().c_str());
-
-	printf("Played %i games in %f seconds.  (%i errors)\n", CPPFight::games_played, (float)(clock()-begin)/CLOCKS_PER_SEC, errors);
+	printf("Played %i games in %f seconds.  (%i game errors)\n", CPPFight::games_played, (float)(times(&t)-begin)/ticks_per_s, errors);
 
 #ifdef _MSC_VER 	
 	getchar();
