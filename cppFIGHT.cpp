@@ -55,15 +55,16 @@
 #include <time.h>
 
 #include <sys/times.h>
+#include <unistd.h>
 
 #include "pplayer.h"
 
 bool gVerbose = false;
-int ticks_per_s = sysconf(_SC_CLK_TCK);
+clock_t ticks_per_s = sysconf(_SC_CLK_TCK);
 
-extern "C" int CFIGHT_GetPlayerTicksPerGame()
+extern "C" clock_t CFIGHT_GetPlayerTicksPerGame()
 {
-	static const int ticks = sysconf(_SC_CLK_TCK);
+	static const clock_t ticks = sysconf(_SC_CLK_TCK);
 	return ticks*30;
 }
 

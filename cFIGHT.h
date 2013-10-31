@@ -32,7 +32,7 @@ typedef enum {
 #define CFIGHT_COIN_COUNT 4 
 #define CFIGHT_PLAYER_TIME_PER_GAME CFIGHT_GetPlayerTicksPerGame()
 
-int CFIGHT_GetPlayerTicksPerGame();
+clock_t CFIGHT_GetPlayerTicksPerGame();
 
 /* mapping coins to indexes, and vice versa */
 int CFIGHT_Coin2Index( CFIGHT_Coin coinType );
