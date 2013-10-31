@@ -11,6 +11,7 @@
 #include <set>
 #include <vector>
 #include <algorithm>
+#include <cstdlib>
 
 namespace Thad{
 
