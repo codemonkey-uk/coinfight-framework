@@ -60,6 +60,9 @@
 #include "pplayer.h"
 
 bool gVerbose = false;
+int gGamesPerMatch=3;
+
+
 clock_t ticks_per_s = sysconf(_SC_CLK_TCK);
 
 extern "C" clock_t CFIGHT_GetPlayerTicksPerGame()
@@ -1205,18 +1208,34 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 			
 			// N = New AI (continued)
 			switch (mode){
+				// Moves mode: read a game state and out put the move selected 
+				// by the requested bot
 				case 'm':
 					pMoves->push_back(command);
 					command="";
 					break;
+				// add a New bot
 				case 'n':
 					break;
+				// eXclude a bot
 				case 'x':
 					CPPFight::PlayerRegister::Instance().Exclude(command);
 					command="";
 					break;
+				// be Verbose
 				case 'v':
 					gVerbose=true;
+					command="";
+					break;
+				// set Games per match (1v1)
+				case 'g':
+					gGamesPerMatch=atoi(command.c_str());
+					if (gGamesPerMatch<1) {
+						fprintf(stderr,"Illegal games per match: %s (%i)\n", 
+							command.c_str(),
+							gGamesPerMatch);
+						exit(-1);
+					}
 					command="";
 					break;
 				default:
@@ -1295,7 +1314,7 @@ int main(int argc, char* argv[])
 	tms t;
 	clock_t begin = times(&t);
 
-	printf("C++ FIGHT (c) T.Frogley 2001,2002,2013\n");
+	if (gVerbose) printf("C++ FIGHT (c) T.Frogley 2001,2002,2013\n");
 
 	//Round robin
 	std::map< int, int > rr_points_scores;	//total games won count
@@ -1332,7 +1351,7 @@ int main(int argc, char* argv[])
 				players[1] = *k;
 
 				std::map< int, int > match_score;
-				for(int i=0;i<3;i++){
+				for(int i=0;i<gGamesPerMatch;i++){
 					CPPFight::TournamentGame theGame( players );
 					int winner = theGame.PlayGame();
 					if (winner!=-1){						
@@ -1470,13 +1489,12 @@ int main(int argc, char* argv[])
 		round++;
 	}
 
-	//printf("\n  And the winner is: %s by %s\n\n", 
-	//				tournement[0]->GetTitle().c_str(),
-	//				tournement[0]->GetAuthor().c_str());
-	printf("Played %i games in %f seconds.  (%i game errors)\n", CPPFight::games_played, (float)(times(&t)-begin)/ticks_per_s, errors);
-
-#ifdef _MSC_VER 	
-	getchar();
-#endif
+	if (gVerbose)
+	{
+		printf("Played %i games in %f seconds.  (%i game errors)\n", 
+			CPPFight::games_played, 
+			(float)(times(&t)-begin)/ticks_per_s, 
+			errors);
+	}
 	return 0;
 }
