@@ -1,5 +1,5 @@
 // cppFIGHT v1.7
-// An AI Tournement Framework for "FIGHT!", a free game from Cheapass Games
+// An AI tournament Framework for "FIGHT!", a free game from Cheapass Games
 // (c) T.Frogley 2002-2013
 // With thanks also to Oscar Cooper
 //
@@ -1265,7 +1265,7 @@ class CompScores
 		std::map< int, int >& myScores;
 };
 
-int RoundRobin(const CPPFight::PlayerList& tournement)
+int RoundRobin(const CPPFight::PlayerList& tournament)
 {
 	int errors = 0;
 	
@@ -1276,26 +1276,26 @@ int RoundRobin(const CPPFight::PlayerList& tournement)
 	printf("\nRound Robin 1 on 1 Tournament\n");
 
 	printf(" Key:\n");
-	for(int i=0;i<tournement.size();++i){
+	for(int i=0;i<tournament.size();++i){
 		printf("  %2i)\t%s by %s\n", 
-			tournement[i]->GetUID(),
-			tournement[i]->GetTitle().c_str(),
-			tournement[i]->GetAuthor().c_str());
+			tournament[i]->GetUID(),
+			tournament[i]->GetTitle().c_str(),
+			tournament[i]->GetAuthor().c_str());
 	}
 
 	printf(" Cross Table (rows=player 1, columns=player 2, table shows player 1 wins):\n\t");
 	CPPFight::PlayerList::const_iterator k;
-	for(k=tournement.begin();k!=tournement.end();++k){
+	for(k=tournament.begin();k!=tournament.end();++k){
 		printf("%2i\t", (*k)->GetUID() );
 	}
 	printf("\n\t");	
-	for(k=tournement.begin();k!=tournement.end();++k){
+	for(k=tournament.begin();k!=tournament.end();++k){
 		printf("--\t" );
 	}
 	printf("\n");
-	for(CPPFight::PlayerList::const_iterator j=tournement.begin();j!=tournement.end();++j){
+	for(CPPFight::PlayerList::const_iterator j=tournament.begin();j!=tournament.end();++j){
 		printf("  %2i)\t", (*j)->GetUID() );
-		for(CPPFight::PlayerList::const_iterator k=tournement.begin();k!=tournement.end();++k){
+		for(CPPFight::PlayerList::const_iterator k=tournament.begin();k!=tournament.end();++k){
 			if (j!=k){
 
 				CPPFight::PlayerList players(2);
@@ -1345,51 +1345,51 @@ int RoundRobin(const CPPFight::PlayerList& tournement)
 	}
 
 	//sort the player list on points score
-	CPPFight::PlayerList tournement_sorted(tournement);
-	std::sort( tournement_sorted.begin(), tournement_sorted.end(), CompScores(rr_points_scores) );
+	CPPFight::PlayerList tournament_sorted(tournament);
+	std::sort( tournament_sorted.begin(), tournament_sorted.end(), CompScores(rr_points_scores) );
 	
 	printf(" Totals:\n  Games:\n");
 
-	for(int i=0;i<tournement_sorted.size();++i){
+	for(int i=0;i<tournament_sorted.size();++i){
 		printf("%6i - %s by %s\n", 
-			rr_points_scores[ tournement_sorted[i]->GetUID() ],
-			tournement_sorted[i]->GetTitle().c_str(),
-			tournement_sorted[i]->GetAuthor().c_str());
+			rr_points_scores[ tournament_sorted[i]->GetUID() ],
+			tournament_sorted[i]->GetTitle().c_str(),
+			tournament_sorted[i]->GetAuthor().c_str());
 	}
 
 	//sort the player list on score
-	std::sort( tournement_sorted.begin(), tournement_sorted.end(), CompScores(rr_wld_scores) );
+	std::sort( tournament_sorted.begin(), tournament_sorted.end(), CompScores(rr_wld_scores) );
 	printf("  Matches:\n");
 
-	for(int i=0;i<tournement_sorted.size();++i){
+	for(int i=0;i<tournament_sorted.size();++i){
 		printf("%6i - %s by %s\n", 
-			rr_wld_scores[ tournement_sorted[i]->GetUID() ],
-			tournement_sorted[i]->GetTitle().c_str(),
-			tournement_sorted[i]->GetAuthor().c_str());
+			rr_wld_scores[ tournament_sorted[i]->GetUID() ],
+			tournament_sorted[i]->GetTitle().c_str(),
+			tournament_sorted[i]->GetAuthor().c_str());
 	}
 	
 	return errors;
 }
 
-int Elimination(const CPPFight::PlayerList& tournement_)
+int Elimination(const CPPFight::PlayerList& tournament_)
 {
 	int errors = 0;
 	
 	// working copy
-	CPPFight::PlayerList tournement = tournement_;
+	CPPFight::PlayerList tournament = tournament_;
 	
 	printf("\nMulitiplayer Elimination Tournament\n");
 	int round=1;
-	while(tournement.size()>1){
+	while(tournament.size()>1){
 		std::map< int, int > scores;
-		std::vector< CPPFight::PlayerList > groups(tournement.size()/6+1);
+		std::vector< CPPFight::PlayerList > groups(tournament.size()/6+1);
 		printf(" Round %i - %i players, %i groups\n",
 			round,
-			static_cast<int>(tournement.size()),
+			static_cast<int>(tournament.size()),
 			static_cast<int>(groups.size()));
 
-		for(unsigned int i=0;i!=tournement.size();++i){
-			groups[ i%groups.size() ].push_back( tournement[i] );
+		for(unsigned int i=0;i!=tournament.size();++i){
+			groups[ i%groups.size() ].push_back( tournament[i] );
 		}
 
 		//printf("Running...");
@@ -1444,7 +1444,7 @@ int Elimination(const CPPFight::PlayerList& tournement_)
 			winners.insert(winners.end(), begin, end);
 		}
 
-		tournement = winners;
+		tournament = winners;
 		round++;
 	}
 	
@@ -1509,18 +1509,24 @@ int main(int argc, char* argv[])
 
 	if (gVerbose) printf("C++ FIGHT (c) T.Frogley 2001,2002,2013\n");
 
-	CPPFight::PlayerList tournement = CPPFight::PlayerRegister::Instance().GetPlayerList();
+	CPPFight::PlayerList tournament=CPPFight::PlayerRegister::Instance().GetPlayerList();
 
 	for (std::string::iterator i=gTspec.begin(); i!=gTspec.end(); ++i)
 	{
-		if (*i=='r')
+		switch (*i)
 		{
-			errors += RoundRobin(tournement);
-		}
-		// Elimination
-		else if (*i=='e')
-		{
-			errors += Elimination(tournement);
+			case 'r':
+				errors += RoundRobin(tournament);
+				break;
+			case 'e':
+				errors += Elimination(tournament);
+				break;
+			default:
+				fprintf( stderr,
+					"Unrecognised tournament type %c in %s\n", 
+					*i, gTspec.c_str()
+				);
+				break;
 		}
 	}
 		
