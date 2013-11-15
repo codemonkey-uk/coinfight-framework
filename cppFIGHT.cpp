@@ -1265,6 +1265,110 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 	AddCLPlayer(command, ai_name, author);
 }
 
+int RoundRobin(CPPFight::PlayerList& tournement)
+{
+	int errors = 0;
+	
+	//Round robin
+	std::map< int, int > rr_points_scores;	//total games won count
+	std::map< int, int > rr_wld_scores;		//matches (100 games) won/lost/draw
+
+	printf("\nRound Robin 1 on 1 Tournament\n");
+
+	printf(" Key:\n");
+	for(int i=0;i<tournement.size();++i){
+		printf("  %2i)\t%s by %s\n", 
+			tournement[i]->GetUID(),
+			tournement[i]->GetTitle().c_str(),
+			tournement[i]->GetAuthor().c_str());
+	}
+
+	printf(" Cross Table (rows=player 1, columns=player 2, table shows player 1 wins):\n\t");
+	CPPFight::PlayerList::iterator k;
+	for(k=tournement.begin();k!=tournement.end();++k){
+		printf("%2i\t", (*k)->GetUID() );
+	}
+	printf("\n\t");	
+	for(k=tournement.begin();k!=tournement.end();++k){
+		printf("--\t" );
+	}
+	printf("\n");
+	for(CPPFight::PlayerList::iterator j=tournement.begin();j!=tournement.end();++j){
+		printf("  %2i)\t", (*j)->GetUID() );
+		for(CPPFight::PlayerList::iterator k=tournement.begin();k!=tournement.end();++k){
+			if (j!=k){
+
+				CPPFight::PlayerList players(2);
+				players[0] = *j;
+				players[1] = *k;
+
+				std::map< int, int > match_score;
+				for(int i=0;i<gGamesPerMatch;i++){
+					CPPFight::TournamentGame theGame( players );
+					int winner = theGame.PlayGame();
+					if (winner!=-1){						
+						rr_points_scores[ winner ]++;
+						match_score[ winner ]++;
+					}
+					else{
+						errors++;
+					}
+				}
+
+				//transfer match score to win/lose/draw score
+				if (match_score[ players[0]->GetUID() ] >
+					match_score[ players[1]->GetUID() ]){
+
+					rr_wld_scores[players[0]->GetUID()]++;
+					//rr_wld_scores[players[1]->GetUID()]--;
+
+					//printf("%2i\t", players[0]->GetUID() );
+
+				}
+				else if(match_score[ players[0]->GetUID() ] <
+						match_score[ players[1]->GetUID() ]){
+
+					//rr_wld_scores[players[0]->GetUID()]--;
+					rr_wld_scores[players[1]->GetUID()]++;
+
+					//printf("%2i\t", players[1]->GetUID() );
+				}
+
+				printf("%3i\t", match_score[ players[0]->GetUID() ] );
+
+			}
+			else{
+				printf( "--\t" );
+			}
+		}
+		printf("\n");
+	}
+
+	//sort the player list on points score
+	std::sort( tournement.begin(), tournement.end(), CompScores(rr_points_scores) );
+	printf(" Totals:\n  Games:\n");
+
+	for(int i=0;i<tournement.size();++i){
+		printf("%6i - %s by %s\n", 
+			rr_points_scores[ tournement[i]->GetUID() ],
+			tournement[i]->GetTitle().c_str(),
+			tournement[i]->GetAuthor().c_str());
+	}
+
+	//sort the player list on score
+	std::sort( tournement.begin(), tournement.end(), CompScores(rr_wld_scores) );
+	printf("  Matches:\n");
+
+	for(int i=0;i<tournement.size();++i){
+		printf("%6i - %s by %s\n", 
+			rr_wld_scores[ tournement[i]->GetUID() ],
+			tournement[i]->GetTitle().c_str(),
+			tournement[i]->GetAuthor().c_str());
+	}
+	
+	return errors;
+}
+
 int main(int argc, char* argv[])
 {
 	CFIGHT_CreateAllPlayers();
@@ -1321,105 +1425,11 @@ int main(int argc, char* argv[])
 
 	if (gVerbose) printf("C++ FIGHT (c) T.Frogley 2001,2002,2013\n");
 
-	//Round robin
-	std::map< int, int > rr_points_scores;	//total games won count
-	std::map< int, int > rr_wld_scores;		//matches (100 games) won/lost/draw
 	CPPFight::PlayerList tournement = CPPFight::PlayerRegister::Instance().GetPlayerList();
 
 	if (gTspec.find('r')!=std::string::npos)
 	{
-		printf("\nRound Robin 1 on 1 Tournament\n");
-
-		printf(" Key:\n");
-		for(i=0;i<tournement.size();++i){
-			printf("  %2i)\t%s by %s\n", 
-				tournement[i]->GetUID(),
-				tournement[i]->GetTitle().c_str(),
-				tournement[i]->GetAuthor().c_str());
-		}
-
-		printf(" Cross Table (rows=player 1, columns=player 2, table shows player 1 wins):\n\t");
-		CPPFight::PlayerList::iterator k;
-		for(k=tournement.begin();k!=tournement.end();++k){
-			printf("%2i\t", (*k)->GetUID() );
-		}
-		printf("\n\t");	
-		for(k=tournement.begin();k!=tournement.end();++k){
-			printf("--\t" );
-		}
-		printf("\n");
-		for(CPPFight::PlayerList::iterator j=tournement.begin();j!=tournement.end();++j){
-			printf("  %2i)\t", (*j)->GetUID() );
-			for(CPPFight::PlayerList::iterator k=tournement.begin();k!=tournement.end();++k){
-				if (j!=k){
-
-					CPPFight::PlayerList players(2);
-					players[0] = *j;
-					players[1] = *k;
-
-					std::map< int, int > match_score;
-					for(int i=0;i<gGamesPerMatch;i++){
-						CPPFight::TournamentGame theGame( players );
-						int winner = theGame.PlayGame();
-						if (winner!=-1){						
-							rr_points_scores[ winner ]++;
-							match_score[ winner ]++;
-						}
-						else{
-							errors++;
-						}
-					}
-
-					//transfer match score to win/lose/draw score
-					if (match_score[ players[0]->GetUID() ] >
-						match_score[ players[1]->GetUID() ]){
-
-						rr_wld_scores[players[0]->GetUID()]++;
-						//rr_wld_scores[players[1]->GetUID()]--;
-
-						//printf("%2i\t", players[0]->GetUID() );
-
-					}
-					else if(match_score[ players[0]->GetUID() ] <
-							match_score[ players[1]->GetUID() ]){
-
-						//rr_wld_scores[players[0]->GetUID()]--;
-						rr_wld_scores[players[1]->GetUID()]++;
-
-						//printf("%2i\t", players[1]->GetUID() );
-					}
-
-					printf("%3i\t", match_score[ players[0]->GetUID() ] );
-
-				}
-				else{
-					printf( "--\t" );
-				}
-			}
-			printf("\n");
-		}
-
-		//sort the player list on points score
-		std::sort( tournement.begin(), tournement.end(), CompScores(rr_points_scores) );
-		printf(" Totals:\n  Games:\n");
-
-		for(i=0;i<tournement.size();++i){
-			printf("%6i - %s by %s\n", 
-				rr_points_scores[ tournement[i]->GetUID() ],
-				tournement[i]->GetTitle().c_str(),
-				tournement[i]->GetAuthor().c_str());
-		}
-
-		//sort the player list on score
-		std::sort( tournement.begin(), tournement.end(), CompScores(rr_wld_scores) );
-		printf("  Matches:\n");
-
-		for(i=0;i<tournement.size();++i){
-			printf("%6i - %s by %s\n", 
-				rr_wld_scores[ tournement[i]->GetUID() ],
-				tournement[i]->GetTitle().c_str(),
-				tournement[i]->GetAuthor().c_str());
-		}
+		errors += RoundRobin(tournement);
 	}
 
 	// Elimination
