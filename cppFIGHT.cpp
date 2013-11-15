@@ -1369,6 +1369,83 @@ int RoundRobin(CPPFight::PlayerList& tournement)
 	return errors;
 }
 
+int Elimination(CPPFight::PlayerList& tournement)
+{
+	int errors = 0;
+	
+	printf("\nMulitiplayer Elimination Tournament\n");
+	int round=1;
+	while(tournement.size()>1){
+		std::map< int, int > scores;
+		std::vector< CPPFight::PlayerList > groups(tournement.size()/6+1);
+		printf(" Round %i - %i players, %i groups\n",
+			round,
+			static_cast<int>(tournement.size()),
+			static_cast<int>(groups.size()));
+
+		for(unsigned int i=0;i!=tournement.size();++i){
+			groups[ i%groups.size() ].push_back( tournement[i] );
+		}
+
+		//printf("Running...");
+		CPPFight::PlayerList winners;
+
+		for(unsigned int g = 0;g!=groups.size();++g){
+		
+			CPPFight::PlayerList playerList(groups[g]);
+			std::sort( playerList.begin(), playerList.end() );
+			do{
+				CPPFight::TournamentGame theGame( playerList );
+				int winner = theGame.PlayGame();
+				if (winner!=-1){
+					++scores[ winner ];
+				}
+				else{
+					++errors;
+				}
+			}while(std::next_permutation(playerList.begin(), playerList.end()));
+
+
+			printf("  Group %i, %i players.  Scores:\n", 
+				g+1, 
+				static_cast<int>(groups[g].size()) );
+
+
+			std::sort( groups[g].begin(), groups[g].end(),	CompScores(scores) );
+			for(unsigned int i=0;i<groups[g].size();++i){
+				printf("    %i - %s by %s\n", 
+					scores[ groups[g][i]->GetUID() ],
+					groups[g][i]->GetTitle().c_str(),
+					groups[g][i]->GetAuthor().c_str());
+			}
+		
+			// players going to next round -> top half of table
+			CPPFight::PlayerList::iterator begin = groups[g].begin();
+			CPPFight::PlayerList::iterator end = begin+(groups[g].size()+1)/2;
+		
+			// let extra contestants into next round in case of ties in table center
+			while( end!=groups[g].end() && scores[(*(end-1))->GetUID()]==scores[(*end)->GetUID()] ){
+				++end;
+			}
+
+			// where including ties means all players pass to next round, and it's already 
+			// down to one group, exclude ties from winners circle
+			if ( end==groups[g].end() && groups.size()==1){               
+				do{
+					--end;
+				}while( std::distance(groups[g].begin(),end)>0 && scores[(*(end-1))->GetUID()]==scores[(*end)->GetUID()] );
+			}
+		
+			winners.insert(winners.end(), begin, end);
+		}
+
+		tournement = winners;
+		round++;
+	}
+	
+	return errors;
+}
+
 int main(int argc, char* argv[])
 {
 	CFIGHT_CreateAllPlayers();
@@ -1419,7 +1496,9 @@ int main(int argc, char* argv[])
 		}
 		return 0;
 	}
-	unsigned int i,errors = 0;
+	
+	unsigned int errors = 0;
+	
 	tms t;
 	clock_t begin = times(&t);
 
@@ -1435,76 +1514,7 @@ int main(int argc, char* argv[])
 	// Elimination
 	if (gTspec.find('e')!=std::string::npos)
 	{
-	
-		printf("\nMulitiplayer Elimination Tournament\n");
-		int round=1;
-		while(tournement.size()>1){
-			std::map< int, int > scores;
-			std::vector< CPPFight::PlayerList > groups(tournement.size()/6+1);
-			printf(" Round %i - %i players, %i groups\n",
-				round,
-				static_cast<int>(tournement.size()),
-				static_cast<int>(groups.size()));
-
-			for(unsigned int i=0;i!=tournement.size();++i){
-				groups[ i%groups.size() ].push_back( tournement[i] );
-			}
-
-			//printf("Running...");
-			CPPFight::PlayerList winners;
-
-			for(unsigned int g = 0;g!=groups.size();++g){
-			
-				CPPFight::PlayerList playerList(groups[g]);
-				std::sort( playerList.begin(), playerList.end() );
-				do{
-					CPPFight::TournamentGame theGame( playerList );
-					int winner = theGame.PlayGame();
-					if (winner!=-1){
-						++scores[ winner ];
-					}
-					else{
-						++errors;
-					}
-				}while(std::next_permutation(playerList.begin(), playerList.end()));
-
-
-				printf("  Group %i, %i players.  Scores:\n", 
-					g+1, 
-					static_cast<int>(groups[g].size()) );
-
-
-				std::sort( groups[g].begin(), groups[g].end(),	CompScores(scores) );
-				for(unsigned int i=0;i<groups[g].size();++i){
-					printf("    %i - %s by %s\n", 
-						scores[ groups[g][i]->GetUID() ],
-						groups[g][i]->GetTitle().c_str(),
-						groups[g][i]->GetAuthor().c_str());
-				}
-			
-				// players going to next round -> top half of table
-				CPPFight::PlayerList::iterator begin = groups[g].begin();
-				CPPFight::PlayerList::iterator end = begin+(groups[g].size()+1)/2;
-			
-				// let extra contestants into next round in case of ties in table center
-				while( end!=groups[g].end() && scores[(*(end-1))->GetUID()]==scores[(*end)->GetUID()] ){
-					++end;
-				}
-
-				// where including ties means all players pass to next round, and it's already 
-				// down to one group, exclude ties from winners circle
-				if ( end==groups[g].end() && groups.size()==1){               
-					do{
-						--end;
-					}while( std::distance(groups[g].begin(),end)>0 && scores[(*(end-1))->GetUID()]==scores[(*end)->GetUID()] );
-				}
-			
-				winners.insert(winners.end(), begin, end);
-			}
-
-			tournement = winners;
-			round++;
-		}
+		errors += Elimination(tournement);
 	}
 	
 	if (gVerbose)
