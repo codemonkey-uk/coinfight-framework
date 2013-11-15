@@ -1132,22 +1132,6 @@ CPPFight_GameState CPPFight_Game_GetGameState( CPPFight_Game the ){
 // main application / tournament
 //
 
-// comparison functor for sorting players based on score
-class CompScores
-{
-	public:
-		CompScores(std::map< int, int >& scores)
-			: myScores(scores)
-		{
-		}
-		bool operator()(CPPFight::Player* a, CPPFight::Player* b)
-		{
-			return myScores[a->GetUID()] > myScores[b->GetUID()];
-		}
-	private:
-		std::map< int, int >& myScores;
-};
-
 extern "C" { void CFIGHT_CreateAllPlayers(); }
 
 void Split(const std::string& in, char c, std::vector<std::string>* pOut)
@@ -1265,7 +1249,23 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 	AddCLPlayer(command, ai_name, author);
 }
 
-int RoundRobin(CPPFight::PlayerList& tournement)
+// comparison functor for sorting players based on score
+class CompScores
+{
+	public:
+		CompScores(std::map< int, int >& scores)
+			: myScores(scores)
+		{
+		}
+		bool operator()(CPPFight::Player* a, CPPFight::Player* b)
+		{
+			return myScores[a->GetUID()] > myScores[b->GetUID()];
+		}
+	private:
+		std::map< int, int >& myScores;
+};
+
+int RoundRobin(const CPPFight::PlayerList& tournement)
 {
 	int errors = 0;
 	
@@ -1284,7 +1284,7 @@ int RoundRobin(CPPFight::PlayerList& tournement)
 	}
 
 	printf(" Cross Table (rows=player 1, columns=player 2, table shows player 1 wins):\n\t");
-	CPPFight::PlayerList::iterator k;
+	CPPFight::PlayerList::const_iterator k;
 	for(k=tournement.begin();k!=tournement.end();++k){
 		printf("%2i\t", (*k)->GetUID() );
 	}
@@ -1293,9 +1293,9 @@ int RoundRobin(CPPFight::PlayerList& tournement)
 		printf("--\t" );
 	}
 	printf("\n");
-	for(CPPFight::PlayerList::iterator j=tournement.begin();j!=tournement.end();++j){
+	for(CPPFight::PlayerList::const_iterator j=tournement.begin();j!=tournement.end();++j){
 		printf("  %2i)\t", (*j)->GetUID() );
-		for(CPPFight::PlayerList::iterator k=tournement.begin();k!=tournement.end();++k){
+		for(CPPFight::PlayerList::const_iterator k=tournement.begin();k!=tournement.end();++k){
 			if (j!=k){
 
 				CPPFight::PlayerList players(2);
@@ -1345,33 +1345,38 @@ int RoundRobin(CPPFight::PlayerList& tournement)
 	}
 
 	//sort the player list on points score
-	std::sort( tournement.begin(), tournement.end(), CompScores(rr_points_scores) );
+	CPPFight::PlayerList tournement_sorted(tournement);
+	std::sort( tournement_sorted.begin(), tournement_sorted.end(), CompScores(rr_points_scores) );
+	
 	printf(" Totals:\n  Games:\n");
 
-	for(int i=0;i<tournement.size();++i){
+	for(int i=0;i<tournement_sorted.size();++i){
 		printf("%6i - %s by %s\n", 
-			rr_points_scores[ tournement[i]->GetUID() ],
-			tournement[i]->GetTitle().c_str(),
-			tournement[i]->GetAuthor().c_str());
+			rr_points_scores[ tournement_sorted[i]->GetUID() ],
+			tournement_sorted[i]->GetTitle().c_str(),
+			tournement_sorted[i]->GetAuthor().c_str());
 	}
 
 	//sort the player list on score
-	std::sort( tournement.begin(), tournement.end(), CompScores(rr_wld_scores) );
+	std::sort( tournement_sorted.begin(), tournement_sorted.end(), CompScores(rr_wld_scores) );
 	printf("  Matches:\n");
 
-	for(int i=0;i<tournement.size();++i){
+	for(int i=0;i<tournement_sorted.size();++i){
 		printf("%6i - %s by %s\n", 
-			rr_wld_scores[ tournement[i]->GetUID() ],
-			tournement[i]->GetTitle().c_str(),
-			tournement[i]->GetAuthor().c_str());
+			rr_wld_scores[ tournement_sorted[i]->GetUID() ],
+			tournement_sorted[i]->GetTitle().c_str(),
+			tournement_sorted[i]->GetAuthor().c_str());
 	}
 	
 	return errors;
 }
 
-int Elimination(CPPFight::PlayerList& tournement)
+int Elimination(const CPPFight::PlayerList& tournement_)
 {
 	int errors = 0;
+	
+	// working copy
+	CPPFight::PlayerList tournement = tournement_;
 	
 	printf("\nMulitiplayer Elimination Tournament\n");
 	int round=1;
@@ -1506,17 +1511,19 @@ int main(int argc, char* argv[])
 
 	CPPFight::PlayerList tournement = CPPFight::PlayerRegister::Instance().GetPlayerList();
 
-	if (gTspec.find('r')!=std::string::npos)
+	for (std::string::iterator i=gTspec.begin(); i!=gTspec.end(); ++i)
 	{
-		errors += RoundRobin(tournement);
+		if (*i=='r')
+		{
+			errors += RoundRobin(tournement);
+		}
+		// Elimination
+		else if (*i=='e')
+		{
+			errors += Elimination(tournement);
+		}
 	}
-
-	// Elimination
-	if (gTspec.find('e')!=std::string::npos)
-	{
-		errors += Elimination(tournement);
-	}
-	
+		
 	if (gVerbose)
 	{
 		printf("Played %i games in %f seconds.  (%i game errors)\n", 
