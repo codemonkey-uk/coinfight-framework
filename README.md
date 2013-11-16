@@ -15,6 +15,16 @@ Bots added this way become "build in" when the framework is compiled and are inc
 
 ## Command Line Bots
 
+### Including Command Line Bots in a Tournament
+
+Externally implemented AIs can be included in a tournament on the command line:
+
+    -n"command line" "Bot Name" "Author Name"
+   
+For example:
+
+    -n"python bots/basic.py" PyBasic Tom
+
 ### Implementing Command Line Bots
 
 The framework will run an external / command line bot for each turn. 
