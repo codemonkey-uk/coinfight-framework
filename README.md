@@ -13,7 +13,7 @@ The coinfight framework uses the original "Cody" starting coin set:
 See the examples in example.cpp (C++) or cplayers.c (C). 
 Bots added this way become "build in" when the framework is compiled and are included by default when running a tournament.
 
-## Command Line Bots
+## Adding New Bots in Other Langauges (Command Line Bots)
 
 ### Including Command Line Bots in a Tournament
 
