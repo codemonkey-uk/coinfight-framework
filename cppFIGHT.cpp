@@ -1384,7 +1384,7 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 			
 			while(xTable[fi][fj]!=-1 || fi==fj)
 			{
-				if (fj==0) printf("  %2i)\t", tournament[i]->GetUID() );
+				if (fj==0) printf("  %2i)\t", tournament[fi]->GetUID() );
 				if (fi==fj) printf( "--\t" );
 				else printf("%3i\t", xTable[fi][fj] );
 				
