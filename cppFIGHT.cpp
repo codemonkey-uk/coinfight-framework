@@ -1265,36 +1265,151 @@ class CompScores
 		std::map< int, int >& myScores;
 };
 
-int RoundRobin(const CPPFight::PlayerList& tournament)
+class TournamentResultsFormatter
+{
+	public:
+		virtual void Contestants(const CPPFight::PlayerList& tournament) = 0;
+		virtual void MatchResult(
+			const CPPFight::PlayerList& match,
+			const std::vector<int>& games 
+		)=0;
+		virtual void GenerateSummary()=0;
+};
+
+class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
+{
+	public:
+		PrintfRoundRobinResultsFormatter()
+		{
+			fi=0;
+			fj=0;
+		}
+		
+		virtual void Contestants(const CPPFight::PlayerList& _tournament) 
+		{
+			tournament = _tournament;
+			xTable.resize( tournament.size() );
+			
+			printf(" Key:\n");
+			for(int i=0;i<tournament.size();++i){
+			
+				xTable[i].resize( tournament.size() );
+				for(int j=0;j<tournament.size();++j)
+					xTable[i][j]=-1;
+				
+				printf("  %2i)\t%s by %s\n", 
+					tournament[i]->GetUID(),
+					tournament[i]->GetTitle().c_str(),
+					tournament[i]->GetAuthor().c_str());
+			}
+
+			printf(" Cross Table (rows=player 1, columns=player 2, table shows player 1 wins):\n\t");
+			CPPFight::PlayerList::const_iterator k;
+			for(k=tournament.begin();k!=tournament.end();++k){
+				printf("%2i\t", (*k)->GetUID() );
+			}
+			printf("\n\t");	
+			for(k=tournament.begin();k!=tournament.end();++k){
+				printf("--\t" );
+			}
+			printf("\n");
+		}
+		
+		virtual void MatchResult(
+			const CPPFight::PlayerList& match,
+			const std::vector<int>& games 
+		)
+		{
+			assert( games.size()==2 );
+			
+			const int i0=IndexOf(match[0]->GetUID());
+			const int i1=IndexOf(match[1]->GetUID());
+			FlushXTable(i0,i1,games[0]);
+			
+			rr_points_scores[ match[0]->GetUID() ] += games[0];
+			rr_points_scores[ match[1]->GetUID() ] += games[1];
+						
+			//transfer match score to win/lose/draw score
+			if (games[0] > games[1]){
+				rr_wld_scores[match[0]->GetUID()]++;
+			}
+			else if(games[0] < games[1]){
+				rr_wld_scores[match[1]->GetUID()]++;
+			}
+		}
+		
+		virtual void GenerateSummary()
+		{
+			//sort the player list on points score
+			CPPFight::PlayerList tournament_sorted(tournament);
+			std::sort( tournament_sorted.begin(), tournament_sorted.end(), CompScores(rr_points_scores) );
+	
+			printf(" Totals:\n  Games:\n");
+
+			for(int i=0;i<tournament_sorted.size();++i){
+				printf("%6i - %s by %s\n", 
+					rr_points_scores[ tournament_sorted[i]->GetUID() ],
+					tournament_sorted[i]->GetTitle().c_str(),
+					tournament_sorted[i]->GetAuthor().c_str());
+			}
+
+			//sort the player list on score
+			std::sort( tournament_sorted.begin(), tournament_sorted.end(), CompScores(rr_wld_scores) );
+			printf("  Matches:\n");
+
+			for(int i=0;i<tournament_sorted.size();++i){
+				printf("%6i - %s by %s\n", 
+					rr_wld_scores[ tournament_sorted[i]->GetUID() ],
+					tournament_sorted[i]->GetTitle().c_str(),
+					tournament_sorted[i]->GetAuthor().c_str());
+			}
+		}
+		
+	private:
+		CPPFight::PlayerList tournament;
+		std::vector< std::vector<int> > xTable;
+		std::map< int, int > rr_points_scores;	//total games won count
+		std::map< int, int > rr_wld_scores;		//matches (N games) won/lost/draw
+		
+		int IndexOf( int id ) {
+			for (int i=0;i!=tournament.size();++i)
+				if (tournament[i]->GetUID()==id) return i;
+			return -1;
+		}
+		
+		int fi,fj;
+		void FlushXTable(int i,int j,int s)
+		{
+			xTable[i][j] = s;
+			
+			while(xTable[fi][fj]!=-1 || fi==fj)
+			{
+				if (fj==0) printf("  %2i)\t", tournament[i]->GetUID() );
+				if (fi==fj) printf( "--\t" );
+				else printf("%3i\t", xTable[fi][fj] );
+				
+				fj++;
+				if (fj>=tournament.size())
+				{
+					fj=0;
+					fi++;
+					printf("\n");
+					if (fi>=tournament.size())
+						break;
+				}
+			}
+			
+		}
+};
+
+int RoundRobin(const CPPFight::PlayerList& tournament, TournamentResultsFormatter* pOut)
 {
 	int errors = 0;
 	
 	//Round robin
-	std::map< int, int > rr_points_scores;	//total games won count
-	std::map< int, int > rr_wld_scores;		//matches (100 games) won/lost/draw
-
-	printf("\nRound Robin 1 on 1 Tournament\n");
-
-	printf(" Key:\n");
-	for(int i=0;i<tournament.size();++i){
-		printf("  %2i)\t%s by %s\n", 
-			tournament[i]->GetUID(),
-			tournament[i]->GetTitle().c_str(),
-			tournament[i]->GetAuthor().c_str());
-	}
-
-	printf(" Cross Table (rows=player 1, columns=player 2, table shows player 1 wins):\n\t");
-	CPPFight::PlayerList::const_iterator k;
-	for(k=tournament.begin();k!=tournament.end();++k){
-		printf("%2i\t", (*k)->GetUID() );
-	}
-	printf("\n\t");	
-	for(k=tournament.begin();k!=tournament.end();++k){
-		printf("--\t" );
-	}
-	printf("\n");
+	pOut->Contestants(tournament);
+	
 	for(CPPFight::PlayerList::const_iterator j=tournament.begin();j!=tournament.end();++j){
-		printf("  %2i)\t", (*j)->GetUID() );
 		for(CPPFight::PlayerList::const_iterator k=tournament.begin();k!=tournament.end();++k){
 			if (j!=k){
 
@@ -1306,8 +1421,7 @@ int RoundRobin(const CPPFight::PlayerList& tournament)
 				for(int i=0;i<gGamesPerMatch;i++){
 					CPPFight::TournamentGame theGame( players );
 					int winner = theGame.PlayGame();
-					if (winner!=-1){						
-						rr_points_scores[ winner ]++;
+					if (winner!=-1){
 						match_score[ winner ]++;
 					}
 					else{
@@ -1315,58 +1429,16 @@ int RoundRobin(const CPPFight::PlayerList& tournament)
 					}
 				}
 
-				//transfer match score to win/lose/draw score
-				if (match_score[ players[0]->GetUID() ] >
-					match_score[ players[1]->GetUID() ]){
+				std::vector<int> scores(2);
+				scores[0] = match_score[ players[0]->GetUID() ];
+				scores[1] = match_score[ players[1]->GetUID() ];
+				pOut->MatchResult(players, scores);
 
-					rr_wld_scores[players[0]->GetUID()]++;
-					//rr_wld_scores[players[1]->GetUID()]--;
-
-					//printf("%2i\t", players[0]->GetUID() );
-
-				}
-				else if(match_score[ players[0]->GetUID() ] <
-						match_score[ players[1]->GetUID() ]){
-
-					//rr_wld_scores[players[0]->GetUID()]--;
-					rr_wld_scores[players[1]->GetUID()]++;
-
-					//printf("%2i\t", players[1]->GetUID() );
-				}
-
-				printf("%3i\t", match_score[ players[0]->GetUID() ] );
-
-			}
-			else{
-				printf( "--\t" );
 			}
 		}
-		printf("\n");
 	}
 
-	//sort the player list on points score
-	CPPFight::PlayerList tournament_sorted(tournament);
-	std::sort( tournament_sorted.begin(), tournament_sorted.end(), CompScores(rr_points_scores) );
-	
-	printf(" Totals:\n  Games:\n");
-
-	for(int i=0;i<tournament_sorted.size();++i){
-		printf("%6i - %s by %s\n", 
-			rr_points_scores[ tournament_sorted[i]->GetUID() ],
-			tournament_sorted[i]->GetTitle().c_str(),
-			tournament_sorted[i]->GetAuthor().c_str());
-	}
-
-	//sort the player list on score
-	std::sort( tournament_sorted.begin(), tournament_sorted.end(), CompScores(rr_wld_scores) );
-	printf("  Matches:\n");
-
-	for(int i=0;i<tournament_sorted.size();++i){
-		printf("%6i - %s by %s\n", 
-			rr_wld_scores[ tournament_sorted[i]->GetUID() ],
-			tournament_sorted[i]->GetTitle().c_str(),
-			tournament_sorted[i]->GetAuthor().c_str());
-	}
+	pOut->GenerateSummary();
 	
 	return errors;
 }
@@ -1516,8 +1588,12 @@ int main(int argc, char* argv[])
 		switch (*i)
 		{
 			case 'r':
-				errors += RoundRobin(tournament);
+			{
+				printf("\nRound Robin 1 on 1 Tournament\n");
+				PrintfRoundRobinResultsFormatter foo;
+				errors += RoundRobin(tournament, &foo);
 				break;
+			}
 			case 'e':
 				errors += Elimination(tournament);
 				break;
