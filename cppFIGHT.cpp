@@ -1268,12 +1268,14 @@ class CompScores
 class TournamentResultsFormatter
 {
 	public:
-		virtual void Contestants(const CPPFight::PlayerList& tournament) = 0;
-		virtual void MatchResult(
+		virtual void BeginTournament(const CPPFight::PlayerList& t) = 0;
+		virtual void BeginRound(const CPPFight::PlayerList& r, int matches) = 0;
+		virtual void AddMatchResult(
 			const CPPFight::PlayerList& match,
 			const std::vector<int>& games 
 		)=0;
-		virtual void GenerateSummary()=0;
+		virtual void EndRound() = 0;
+		virtual void EndTournament()=0;
 };
 
 class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
@@ -1285,7 +1287,7 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 			fj=0;
 		}
 		
-		virtual void Contestants(const CPPFight::PlayerList& _tournament) 
+		virtual void BeginTournament(const CPPFight::PlayerList& _tournament) 
 		{
 			tournament = _tournament;
 			xTable.resize( tournament.size() );
@@ -1315,7 +1317,7 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 			printf("\n");
 		}
 		
-		virtual void MatchResult(
+		virtual void AddMatchResult(
 			const CPPFight::PlayerList& match,
 			const std::vector<int>& games 
 		)
@@ -1338,7 +1340,7 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 			}
 		}
 		
-		virtual void GenerateSummary()
+		virtual void EndTournament()
 		{
 			//sort the player list on points score
 			CPPFight::PlayerList tournament_sorted(tournament);
@@ -1364,6 +1366,10 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 					tournament_sorted[i]->GetAuthor().c_str());
 			}
 		}
+
+		//unused in this round-robin formatter
+		virtual void BeginRound(const CPPFight::PlayerList& r, int matches){}
+		virtual void EndRound(){}
 		
 	private:
 		CPPFight::PlayerList tournament;
@@ -1398,8 +1404,52 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 						break;
 				}
 			}
-			
 		}
+};
+
+class PrintfEliminationFormatter : public TournamentResultsFormatter
+{
+	public:
+		virtual void BeginTournament(const CPPFight::PlayerList& t) 
+		{
+			printf("\nMulitiplayer Elimination Tournament\n");
+			round=1;
+		}
+		virtual void BeginRound(const CPPFight::PlayerList& r, int matches) 
+		{
+			printf(" Round %i - %i players, %i groups\n",
+				round,
+				static_cast<int>(r.size()),
+				matches);
+			group=1;
+		}
+		virtual void AddMatchResult(
+			const CPPFight::PlayerList& match,
+			const std::vector<int>& games 
+		)
+		{
+			printf("  Group %i, %i players.  Scores:\n", 
+				group, 
+				static_cast<int>(match.size()) );
+
+			for(unsigned int i=0;i<match.size();++i){
+				printf("    %i - %s by %s\n", 
+					games[ i ],
+					match[i]->GetTitle().c_str(),
+					match[i]->GetAuthor().c_str());
+			}
+			
+			group++;		
+		}
+		virtual void EndRound()
+		{
+			round++;
+		}
+		virtual void EndTournament(){}
+		
+	private:
+		int round;
+		int group;
 };
 
 int RoundRobin(const CPPFight::PlayerList& tournament, TournamentResultsFormatter* pOut)
@@ -1407,7 +1457,11 @@ int RoundRobin(const CPPFight::PlayerList& tournament, TournamentResultsFormatte
 	int errors = 0;
 	
 	//Round robin
-	pOut->Contestants(tournament);
+	pOut->BeginTournament(tournament);
+	
+	// all in 1 big round -- though i guess this could be split into 2 rounds
+	// All the AvsB then all the BvsA, or something like that, not sure theres any point
+	pOut->BeginRound(tournament, (tournament.size()-1)*tournament.size());
 	
 	for(CPPFight::PlayerList::const_iterator j=tournament.begin();j!=tournament.end();++j){
 		for(CPPFight::PlayerList::const_iterator k=tournament.begin();k!=tournament.end();++k){
@@ -1432,39 +1486,37 @@ int RoundRobin(const CPPFight::PlayerList& tournament, TournamentResultsFormatte
 				std::vector<int> scores(2);
 				scores[0] = match_score[ players[0]->GetUID() ];
 				scores[1] = match_score[ players[1]->GetUID() ];
-				pOut->MatchResult(players, scores);
+				pOut->AddMatchResult(players, scores);
 
 			}
 		}
 	}
 
-	pOut->GenerateSummary();
+	pOut->EndRound();
+	pOut->EndTournament();
 	
 	return errors;
 }
 
-int Elimination(const CPPFight::PlayerList& tournament_)
+int Elimination(const CPPFight::PlayerList& tournament_, TournamentResultsFormatter* pOut)
 {
 	int errors = 0;
 	
 	// working copy
 	CPPFight::PlayerList tournament = tournament_;
 	
-	printf("\nMulitiplayer Elimination Tournament\n");
-	int round=1;
+	pOut->BeginTournament(tournament);
+
 	while(tournament.size()>1){
-		std::map< int, int > scores;
+		std::map< int, int > score_map;
 		std::vector< CPPFight::PlayerList > groups(tournament.size()/6+1);
-		printf(" Round %i - %i players, %i groups\n",
-			round,
-			static_cast<int>(tournament.size()),
-			static_cast<int>(groups.size()));
+		
+		pOut->BeginRound(tournament, groups.size());
 
 		for(unsigned int i=0;i!=tournament.size();++i){
 			groups[ i%groups.size() ].push_back( tournament[i] );
 		}
 
-		//printf("Running...");
 		CPPFight::PlayerList winners;
 
 		for(unsigned int g = 0;g!=groups.size();++g){
@@ -1475,26 +1527,19 @@ int Elimination(const CPPFight::PlayerList& tournament_)
 				CPPFight::TournamentGame theGame( playerList );
 				int winner = theGame.PlayGame();
 				if (winner!=-1){
-					++scores[ winner ];
+					++score_map[ winner ];
 				}
 				else{
 					++errors;
 				}
 			}while(std::next_permutation(playerList.begin(), playerList.end()));
 
+			std::sort( groups[g].begin(), groups[g].end(),	CompScores(score_map) );
+			std::vector<int> scores(groups[g].size());
+			for(int i=0;i!=groups[g].size();++i)
+				scores[i] = score_map[ groups[g][i]->GetUID() ];
 
-			printf("  Group %i, %i players.  Scores:\n", 
-				g+1, 
-				static_cast<int>(groups[g].size()) );
-
-
-			std::sort( groups[g].begin(), groups[g].end(),	CompScores(scores) );
-			for(unsigned int i=0;i<groups[g].size();++i){
-				printf("    %i - %s by %s\n", 
-					scores[ groups[g][i]->GetUID() ],
-					groups[g][i]->GetTitle().c_str(),
-					groups[g][i]->GetAuthor().c_str());
-			}
+			pOut->AddMatchResult(groups[g], scores);
 		
 			// players going to next round -> top half of table
 			CPPFight::PlayerList::iterator begin = groups[g].begin();
@@ -1510,15 +1555,18 @@ int Elimination(const CPPFight::PlayerList& tournament_)
 			if ( end==groups[g].end() && groups.size()==1){               
 				do{
 					--end;
-				}while( std::distance(groups[g].begin(),end)>0 && scores[(*(end-1))->GetUID()]==scores[(*end)->GetUID()] );
+				}while( std::distance(groups[g].begin(),end)>0 && 
+				        scores[(*(end-1))->GetUID()]==scores[(*end)->GetUID()] );
 			}
 		
 			winners.insert(winners.end(), begin, end);
 		}
 
 		tournament = winners;
-		round++;
+		pOut->EndRound();
 	}
+	
+	pOut->EndTournament();
 	
 	return errors;
 }
@@ -1595,8 +1643,11 @@ int main(int argc, char* argv[])
 				break;
 			}
 			case 'e':
-				errors += Elimination(tournament);
+			{
+				PrintfEliminationFormatter foo;
+				errors += Elimination(tournament, &foo);
 				break;
+			}
 			default:
 				fprintf( stderr,
 					"Unrecognised tournament type %c in %s\n", 
