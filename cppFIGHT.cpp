@@ -63,6 +63,7 @@ bool gVerbose = false;
 int gGamesPerMatch=3;
 
 std::string gTspec="re"; // Round Robin and Elimination
+std::string gOspec="t";	 // Output spec: t = text, j = json
 
 clock_t ticks_per_s = sysconf(_SC_CLK_TCK);
 
@@ -1203,6 +1204,10 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 					gTspec=command;
 					command="";
 					break;
+				case 'o':
+					gOspec=command;
+					command="";
+					break;
 				// add a New bot
 				case 'n':
 					break;
@@ -1283,16 +1288,16 @@ class JsonResultsFormatter : public TournamentResultsFormatter
 	public:
 		JsonResultsFormatter()
 		{
-			printf("[\n");
 			m_tournament=0;
 		}
 		~JsonResultsFormatter()
 		{
-			printf("]\n");
+			if (m_tournament>0) printf("]\n");
 		}
 		virtual void BeginTournament(const CPPFight::PlayerList& t)
 		{
 			if (m_tournament>0) printf(",");
+			else printf("[\n");
 			printf("\{\n");
 			printf("\"players\":[\n");
 			for(int i=0;i!=t.size();++i)
@@ -1695,21 +1700,39 @@ int main(int argc, char* argv[])
 
 	CPPFight::PlayerList tournament=CPPFight::PlayerRegister::Instance().GetPlayerList();
 
-	//JsonResultsFormatter foo;
+	PrintfEliminationFormatter pfErf;
+	PrintfRoundRobinResultsFormatter pfRRrf;
+	JsonResultsFormatter jRF;
+	
+	TournamentResultsFormatter *pRRRF=0, *pERF=0;
+	if (gOspec[0]=='t') 
+	{
+		pRRRF=&pfRRrf;
+		pERF=&pfErf;
+	}
+	else if (gOspec[0]=='j') 
+	{
+		pRRRF=&jRF;
+		pERF=&jRF;
+	}
+	else
+	{
+		fprintf(stderr,"Unrecognised Output Format: %s\n", gOspec.c_str() );
+		exit(-1);
+	}
+
 	for (std::string::iterator i=gTspec.begin(); i!=gTspec.end(); ++i)
 	{
 		switch (*i)
 		{
 			case 'r':
 			{
-				PrintfRoundRobinResultsFormatter foo;
-				errors += RoundRobin(tournament, &foo);
+				errors += RoundRobin(tournament, pRRRF);
 				break;
 			}
 			case 'e':
 			{
-				PrintfEliminationFormatter foo;
-				errors += Elimination(tournament, &foo);
+				errors += Elimination(tournament, pERF);
 				break;
 			}
 			default:
