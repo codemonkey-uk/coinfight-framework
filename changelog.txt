@@ -1,8 +1,16 @@
 C & C++ Fight Change Log
 ------------------------
 
-v1.9 (2013.10.26)
+v1.9a (2013.10.26)
+* Added support for excluding bots with the command line: -xName
+* Added support for setting games-per-match with command line: -g...
+  Where ... is a number > 0
+* Added support for controlling tournaments run by command line: -t...
+  Where ... is 0-N letters, 1 per tournament, 'e' for elimination, 'r' for round-robin.
+* Added support for output of results in JSON format via the command line: -oj
+* Bug fixes.
 
+v1.9 (2013.10.26)
 * Added the ability to add a bot written in any language to the player list.
 External bots are implemented as console applications, which tread game-state from std-in,
 and write their move to std out. External bots are added via the command line, like so:
