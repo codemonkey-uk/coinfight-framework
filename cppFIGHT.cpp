@@ -1278,6 +1278,59 @@ class TournamentResultsFormatter
 		virtual void EndTournament()=0;
 };
 
+class JsonResultsFormatter : public TournamentResultsFormatter
+{
+	public:
+		JsonResultsFormatter()
+		{
+			printf("{\n");
+			m_tournament=0;
+		}
+		~JsonResultsFormatter()
+		{
+			printf("}\n");
+		}
+		virtual void BeginTournament(const CPPFight::PlayerList& t)
+		{
+			if (m_tournament>0) printf(",");
+			printf("\t\"tournament\":[\n");
+			m_round=0;
+		}
+		virtual void BeginRound(const CPPFight::PlayerList& r, int matches){
+			if (m_round>0) printf(",");
+			printf("[");
+			m_match=0;
+		}
+		virtual void AddMatchResult(
+			const CPPFight::PlayerList& match,
+			const std::vector<int>& games 
+		)
+		{
+			if (m_match>0) printf(",");
+			printf("[");
+			for(int i=0;i!=match.size();++i)
+			{
+				if (i>0) printf(",\n\t\t\t\t");
+				printf("{\"%i\":%i}", match[i]->GetUID(), games[i]);
+			}
+			printf("]\n");
+			m_match++;
+		}
+		virtual void EndRound()
+		{
+			m_round++;
+			printf("]");
+		}
+		virtual void EndTournament()
+		{
+			printf("\t]\n");
+			m_tournament++;
+		}
+		int m_tournament;
+		int m_round;
+		int m_match;
+};
+
 class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 {
 	public:
@@ -1631,13 +1684,13 @@ int main(int argc, char* argv[])
 
 	CPPFight::PlayerList tournament=CPPFight::PlayerRegister::Instance().GetPlayerList();
 
+	//JsonResultsFormatter foo;
 	for (std::string::iterator i=gTspec.begin(); i!=gTspec.end(); ++i)
 	{
 		switch (*i)
 		{
 			case 'r':
 			{
-				printf("\nRound Robin 1 on 1 Tournament\n");
 				PrintfRoundRobinResultsFormatter foo;
 				errors += RoundRobin(tournament, &foo);
 				break;
