@@ -1283,17 +1283,28 @@ class JsonResultsFormatter : public TournamentResultsFormatter
 	public:
 		JsonResultsFormatter()
 		{
-			printf("{\n");
+			printf("[\n");
 			m_tournament=0;
 		}
 		~JsonResultsFormatter()
 		{
-			printf("}\n");
+			printf("]\n");
 		}
 		virtual void BeginTournament(const CPPFight::PlayerList& t)
 		{
 			if (m_tournament>0) printf(",");
-			printf("\t\"tournament\":[\n");
+			printf("\{\n");
+			printf("\"players\":[\n");
+			for(int i=0;i!=t.size();++i)
+			{
+				if (i>0)  printf(",");
+				printf("{\"uid\":%i,\"title\":\"%s\",\"author\":\"%s\"}",
+					t[i]->GetUID(),
+					t[i]->GetTitle().c_str(),
+					t[i]->GetAuthor().c_str());
+			}
+			printf("],");
+			printf("\"rounds\":[\n");
 			m_round=0;
 		}
 		virtual void BeginRound(const CPPFight::PlayerList& r, int matches){
@@ -1310,10 +1321,10 @@ class JsonResultsFormatter : public TournamentResultsFormatter
 			printf("[");
 			for(int i=0;i!=match.size();++i)
 			{
-				if (i>0) printf(",\n\t\t\t\t");
+				if (i>0) printf(",");
 				printf("{\"%i\":%i}", match[i]->GetUID(), games[i]);
 			}
-			printf("]\n");
+			printf("]");
 			m_match++;
 		}
 		virtual void EndRound()
@@ -1323,7 +1334,7 @@ class JsonResultsFormatter : public TournamentResultsFormatter
 		}
 		virtual void EndTournament()
 		{
-			printf("\t]\n");
+			printf("]}\n");
 			m_tournament++;
 		}
 		int m_tournament;
