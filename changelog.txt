@@ -2,7 +2,8 @@ C & C++ Fight Change Log
 ------------------------
 
 v1.9a (2013.10.26)
-* Added support for excluding bots with the command line: -xName
+* Added support for excluding bots with the command line: -x...
+  Where ... is the bot or author name (case sensitive exact match).
 * Added support for setting games-per-match with command line: -g...
   Where ... is a number > 0
 * Added support for controlling tournaments run by command line: -t...
