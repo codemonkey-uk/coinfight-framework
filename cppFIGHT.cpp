@@ -1,4 +1,4 @@
-// cppFIGHT v1.7
+// cppFIGHT v1.9a 
 // An AI tournament Framework for "FIGHT!", a free game from Cheapass Games
 // (c) T.Frogley 2002-2013
 // With thanks also to Oscar Cooper
