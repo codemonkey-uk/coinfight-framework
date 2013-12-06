@@ -11,5 +11,6 @@ obj : cFIGHT.h
 example.o : cppFIGHT.h
 cppFIGHT.o pplayer.o : cppFIGHT.h pplayer.h
 
+.PHONY : clean
 clean:
-	rm fight *.o
+	rm fight $(obj)
