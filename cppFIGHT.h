@@ -75,14 +75,14 @@ namespace CPPFight
 	class Exception
 	{
 		public: 
-			virtual std::string ToString() { return "Generic Game Exception."; }
+			virtual std::string ToString() const { return "Generic Game Exception."; }
 			virtual ~Exception() {};
 	};
 
 	class OutOfTimeException : public Exception
 	{
 		public: 
-			virtual std::string ToString() { return "Out of Time!"; }
+			virtual std::string ToString() const { return "Out of Time!"; }
 	};
 
 	//
@@ -199,7 +199,7 @@ namespace CPPFight
 			
 			//illegal moves should be imposible to construct
 			class Illegal : public Exception {
-				virtual std::string ToString() { return "Illegal Move!"; }
+				virtual std::string ToString() const { return "Illegal Move!"; }
 			};
 			
 			//construct move

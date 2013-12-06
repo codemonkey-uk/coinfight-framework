@@ -139,7 +139,7 @@ namespace CPPFight {
 			sprintf(buffer,"%i is not a valid Coin.", c);
 			mError=buffer;
 		}
-		virtual std::string ToString() { return mError; }
+		virtual std::string ToString() const { return mError; }
 		std::string mError;
 	};
 	
@@ -228,7 +228,7 @@ namespace CPPFight {
 				change.GetCount(QUARTER),QUARTER);
 			mError=buffer;
 		}
-		virtual std::string ToString() { return mError; }
+		virtual std::string ToString() const { return mError; }
 		std::string mError;
 	};
 

@@ -82,7 +82,7 @@ class MessageException : public Exception
 {
 	public:
 	MessageException(const std::string& error) : mError(error) {}
-	virtual std::string ToString() { return mError; }
+	virtual std::string ToString() const { return mError; }
 	std::string mError;
 };
 		
