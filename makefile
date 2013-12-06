@@ -1,8 +1,10 @@
 CFLAGS=-I. -Wall
 CXXFLAGS=-I. -Wall
 
-fight: cppFIGHT.o cplayers.o cexample.o example.o pplayer.o
-	g++ -o fight cppFIGHT.o cplayers.o cexample.o example.o pplayer.o
+obj = cppFIGHT.o cplayers.o cexample.o example.o pplayer.o
+
+fight: $(obj)
+	g++ -o fight $(obj)
 	
 clean:
 	rm fight *.o
