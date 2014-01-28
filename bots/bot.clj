@@ -26,33 +26,45 @@
 )
 
 (defn change-value
-	""
+	"Calculates the value of a change-pool"
 	[change]
 	(apply + (change-as-values change))
 )
 
 (defn change-filter
-	""
+	"Removes coin denominations that the count is zero for"
 	[change]
 	(filter #(> (first %) 0) change)
 )
 
-(def inp (list 
-	"8x1, 9x5, 6x10, 3x25", 
-	"1x1, 0x5, 0x10, 0x25",
-	"0x1, 0x5, 0x10, 0x25",
-	"3x1, 0x5, 0x10, 0x25")
+(defn do-coinfight
+	"Do it!"
+	[inp]
+	
+	(def player-count (Integer. (first (clojure.string/split (first inp) #"\s+"))))
+	(def turn-number (Integer. (second (clojure.string/split (first inp) #"\s+"))))
+
+	(println player-count turn-number)
+	(def whos-turn (mod turn-number player-count))
+	
+	(def change-pools (map 
+		#(change-filter (parse-change %))
+		(rest inp)
+	))
+
+	(def table-change (first change-pools))
+	(def player-change (rest change-pools))
+
+	(println table-change)
+	(println (nth player-change whos-turn))
 )
 
-(def change-pools (map 
-	#(change-filter (parse-change %))
-	inp
-))
+;(defn foo "" [line] (println ">" line))
+;(doseq 
+;	[line (clojure.string/split (slurp *in*) #"\n")] (foo line)	
+;)
 
-(def table-change (first change-pools))
-(def player-change (rest change-pools))
+; creates a variable inp that is a list of lines
+(def inp (apply list (clojure.string/split (slurp *in*) #"\n")))
 
-(println table-change)
-(println player-change)
-
-
+(do-coinfight inp)
