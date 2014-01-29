@@ -44,7 +44,7 @@
 	(def player-count (Integer. (first (clojure.string/split (first inp) #"\s+"))))
 	(def turn-number (Integer. (second (clojure.string/split (first inp) #"\s+"))))
 
-	(println player-count turn-number)
+	; (println player-count turn-number)
 	(def whos-turn (mod turn-number player-count))
 	
 	(def change-pools (map 
@@ -55,8 +55,15 @@
 	(def table-change (first change-pools))
 	(def player-change (rest change-pools))
 
-	(println table-change)
-	(println (nth player-change whos-turn))
+	; (println table-change)
+	; (println (nth player-change whos-turn))
+
+	; play coin of lowest value
+	(def f (change-filter (nth player-change whos-turn)))
+	(println (second (first f)))
+	
+	; take no change
+	(println "0x1, 0x5, 0x10, 0x25")	
 )
 
 ;(defn foo "" [line] (println ">" line))
