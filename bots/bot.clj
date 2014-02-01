@@ -19,6 +19,23 @@
 	)
 )
 
+(defn encode-change-pair
+	""
+	[p]
+	(format "%dx%d" (first p) (second p))
+)
+
+(defn encode-change
+	""
+	[change]
+	(format "%s, %s, %s, %s"
+		(encode-change-pair (nth change 0))
+		(encode-change-pair (nth change 1))
+		(encode-change-pair (nth change 2))
+		(encode-change-pair (nth change 3))
+	)
+)
+
 (defn change-as-values
 	"multiplies the quantities by their values in an"
 	[change]
@@ -63,7 +80,8 @@
 	(println (second (first f)))
 	
 	; take no change
-	(println "0x1, 0x5, 0x10, 0x25")	
+	(def no-change (parse-change "0x1, 0x5, 0x10, 0x25"))
+	(println (encode-change no-change))
 )
 
 ;(defn foo "" [line] (println ">" line))
