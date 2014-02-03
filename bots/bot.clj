@@ -5,7 +5,7 @@
 	(clojure.string/split line #",\s?")
 )
 
-(defn parse-change-inner 
+(defn parse-change-pair 
 	"splits a string '8x1' into a pair of integers"
 	[line]
 	(map #(Integer. %) (clojure.string/split line #"x"))
@@ -14,7 +14,7 @@
 (defn parse-change 
 	"splits '8x1, 9x5, 6x10, 3x25' into ([8 1] [9 5] [6 10] [3 25])"
 	[line] 
-	(map parse-change-inner
+	(map parse-change-pair
 		(parse-change-outer line)
 	)
 )
@@ -28,11 +28,14 @@
 (defn encode-change
 	""
 	[change]
-	(format "%s, %s, %s, %s"
-		(encode-change-pair (nth change 0))
-		(encode-change-pair (nth change 1))
-		(encode-change-pair (nth change 2))
-		(encode-change-pair (nth change 3))
+	(if (= (count change) 1) 
+		(format "%s"
+			(encode-change-pair (first change))
+		)	
+		(format "%s, %s"
+			(encode-change-pair (first change))
+			(encode-change (rest change))
+		)
 	)
 )
 
