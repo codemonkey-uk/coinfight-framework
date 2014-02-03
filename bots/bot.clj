@@ -58,25 +58,19 @@
 )
 
 (defn change-from-inner
-	""
+	"returns the change-pair that can be taken from the arg pair up to value"
 	[value pair]
 	; quot for integer division
 	(list (min (quot value (second pair)) (first pair)) (second pair))
 )
 
 (defn change-from
-	""
-	[value change]
-	(map #(change-from-inner value %) change)
-)
-
-(defn change-from-r
-	""
+	"returns an amount of change to take from 'change' for 'value'"
 	[value change]
 	(let [innr (change-from-inner value (first change))]
 		(if (= (count change) 1) 
 			(list innr)
-			(concat (change-from-r (- value (apply * innr)) (rest change)) [innr])
+			(concat (change-from (- value (apply * innr)) (rest change)) [innr])
 		)
 	)
 )
@@ -92,7 +86,6 @@
 	(def whos-turn (mod turn-number player-count))
 	
 	(def change-pools (map 
-		; #(change-filter (parse-change %))
 		#(parse-change %)
 		(rest inp)
 	))
@@ -108,15 +101,10 @@
 	(def play-value (second (first f)))
 	(println play-value)
 	
-	; take change
-	(def tk (reverse (change-from-r (- play-value 1) table-change)))
+	; take some change
+	(def tk (reverse (change-from (- play-value 1) table-change)))
 	(println (encode-change tk))
 )
-
-;(defn foo "" [line] (println ">" line))
-;(doseq 
-;	[line (clojure.string/split (slurp *in*) #"\n")] (foo line)	
-;)
 
 ; creates a variable inp that is a list of lines
 (def inp (apply list (clojure.string/split (slurp *in*) #"\n")))
