@@ -20,13 +20,13 @@
 )
 
 (defn encode-change-pair
-	""
+	"encodes a 2 element list as a NxM string"
 	[p]
 	(format "%dx%d" (first p) (second p))
 )
 
 (defn encode-change
-	""
+	"encodes a change list as a string"
 	[change]
 	(if (= (count change) 1) 
 		(format "%s"
@@ -57,6 +57,18 @@
 	(filter #(> (first %) 0) change)
 )
 
+(defn change-from-inner
+	""
+	[value pair]
+	(list (min (/ value (second pair)) (first pair)) (second pair))
+)
+
+(defn change-from
+	""
+	[value change]
+	(map #(change-from-inner value %) change)
+)
+	
 (defn do-coinfight
 	"Do it!"
 	[inp]
@@ -80,11 +92,18 @@
 
 	; play coin of lowest value
 	(def f (change-filter (nth player-change whos-turn)))
-	(println (second (first f)))
+	(def play-value (second (first f)))
+	(println play-value)
 	
 	; take no change
 	(def no-change (parse-change "0x1, 0x5, 0x10, 0x25"))
 	(println (encode-change no-change))
+	
+	; (println 
+	; 	(encode-change 
+	; 		(change-from (- play-value 1) table-change)
+	; 	)
+	; )
 )
 
 ;(defn foo "" [line] (println ">" line))
