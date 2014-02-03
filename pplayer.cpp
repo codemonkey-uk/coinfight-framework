@@ -112,7 +112,7 @@ Move POpenPlayer::GetMove( const Game& theGame )
 	if (Serialise(pOut,&result)==false)
 	{
 		// TODO: rewrite (de)serialisation code so we can collect & report the output
-		throw MessageException("Failed to deserialise response.");
+		throw MessageException(std::string("Failed to deserialise response to "));
 	}
 	fclose(pOut);
 	

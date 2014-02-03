@@ -60,7 +60,8 @@
 (defn change-from-inner
 	""
 	[value pair]
-	(list (min (/ value (second pair)) (first pair)) (second pair))
+	; quot for integer division
+	(list (min (quot value (second pair)) (first pair)) (second pair))
 )
 
 (defn change-from
@@ -68,7 +69,18 @@
 	[value change]
 	(map #(change-from-inner value %) change)
 )
-	
+
+(defn change-from-r
+	""
+	[value change]
+	(let [innr (change-from-inner value (first change))]
+		(if (= (count change) 1) 
+			(list innr)
+			(concat (change-from-r (- value (apply * innr)) (rest change)) [innr])
+		)
+	)
+)
+
 (defn do-coinfight
 	"Do it!"
 	[inp]
@@ -80,7 +92,8 @@
 	(def whos-turn (mod turn-number player-count))
 	
 	(def change-pools (map 
-		#(change-filter (parse-change %))
+		; #(change-filter (parse-change %))
+		#(parse-change %)
 		(rest inp)
 	))
 
@@ -95,15 +108,9 @@
 	(def play-value (second (first f)))
 	(println play-value)
 	
-	; take no change
-	(def no-change (parse-change "0x1, 0x5, 0x10, 0x25"))
-	(println (encode-change no-change))
-	
-	; (println 
-	; 	(encode-change 
-	; 		(change-from (- play-value 1) table-change)
-	; 	)
-	; )
+	; take change
+	(def tk (reverse (change-from-r (- play-value 1) table-change)))
+	(println (encode-change tk))
 )
 
 ;(defn foo "" [line] (println ">" line))
