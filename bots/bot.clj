@@ -70,7 +70,7 @@
 	(let [innr (change-from-inner value (first change))]
 		(if (= (count change) 1) 
 			(list innr)
-			(concat (change-from (- value (apply * innr)) (rest change)) [innr])
+			(concat [innr] (change-from (- value (apply * innr)) (rest change)) )
 		)
 	)
 )
@@ -79,31 +79,28 @@
 	"Do it!"
 	[inp]
 	
-	(def player-count (Integer. (first (clojure.string/split (first inp) #"\s+"))))
-	(def turn-number (Integer. (second (clojure.string/split (first inp) #"\s+"))))
+	(let [player-count (Integer. (first (clojure.string/split (first inp) #"\s+")))
+		  turn-number (Integer. (second (clojure.string/split (first inp) #"\s+")))]
 
-	; (println player-count turn-number)
-	(def whos-turn (mod turn-number player-count))
+		; (println player-count turn-number)
+		(let [whos-turn (mod turn-number player-count)
+			  change-pools (map #(parse-change %) (rest inp))]
+
+			(let [table-change (first change-pools) player-change (rest change-pools)]
+
+				; play coin of lowest value
+				(let [play-value (second (first 
+					(change-filter (nth player-change whos-turn))
+				))] (println play-value)
 	
-	(def change-pools (map 
-		#(parse-change %)
-		(rest inp)
-	))
-
-	(def table-change (first change-pools))
-	(def player-change (rest change-pools))
-
-	; (println table-change)
-	; (println (nth player-change whos-turn))
-
-	; play coin of lowest value
-	(def f (change-filter (nth player-change whos-turn)))
-	(def play-value (second (first f)))
-	(println play-value)
-	
-	; take some change
-	(def tk (reverse (change-from (- play-value 1) table-change)))
-	(println (encode-change tk))
+					; take some change
+					(let [tk (change-from (- play-value 1) table-change)]
+						(println (encode-change tk))
+					)
+				)
+			)
+		)
+	)
 )
 
 ; creates a variable inp that is a list of lines
