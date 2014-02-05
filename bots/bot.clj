@@ -80,23 +80,24 @@
 	[inp]
 	
 	(let [tl (clojure.string/split (first inp) #"\s+")]
-		(let [player-count (Integer. (first tl))
-			  turn-number (Integer. (second tl))]
+		(let [player-count (Integer. (first tl)) turn-number (Integer. (second tl))]
 
 			; (println player-count turn-number)
 			(let [whos-turn (mod turn-number player-count)
 				  change-pools (map #(parse-change %) (rest inp))]
 
 				(let [table-change (first change-pools) player-change (rest change-pools)]
+				
+					(let [my-change (nth player-change whos-turn)]
 
-					; play coin of lowest value
-					(let [play-value (second (first 
-						(change-filter (nth player-change whos-turn))
-					))] (println play-value)
-	
-						; take some change
-						(let [tk (change-from (- play-value 1) table-change)]
-							(println (encode-change tk))
+						; play coin of lowest value
+						(let [play-value (second (first (change-filter my-change)))] 
+							(println play-value)
+
+							; take some change
+							(let [tk (change-from (- play-value 1) table-change)]
+								(println (encode-change tk))
+							)
 						)
 					)
 				)
@@ -106,6 +107,6 @@
 )
 
 ; creates a variable inp that is a list of lines
-(def inp (apply list (clojure.string/split (slurp *in*) #"\n")))
-
-(do-coinfight inp)
+(let [inp (apply list (clojure.string/split (slurp *in*) #"\n"))]
+	(do-coinfight inp)
+)
