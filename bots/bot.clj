@@ -79,18 +79,21 @@
 	"Do it!"
 	[inp]
 	
-	(let [tl (clojure.string/split (first inp) #"\s+")]
+	; split the first line to extract turn number and player count
+	; the remaining lines are the change pools
+	(let [tl (clojure.string/split (first inp) #"\s+") change-pools (map #(parse-change %) (rest inp))]
 		(let [player-count (Integer. (first tl)) turn-number (Integer. (second tl))]
 
-			; (println player-count turn-number)
-			(let [whos-turn (mod turn-number player-count)
-				  change-pools (map #(parse-change %) (rest inp))]
-
+			; work out who's turn it is (who *I* am)
+			(let [whos-turn (mod turn-number player-count)]
+			
+				; split the table change, and the player change
 				(let [table-change (first change-pools) player-change (rest change-pools)]
-				
+					
+					; get my change from the player change
 					(let [my-change (nth player-change whos-turn)]
 
-						; play coin of lowest value
+						; play coin of lowest value from my pool
 						(let [play-value (second (first (change-filter my-change)))] 
 							(println play-value)
 
