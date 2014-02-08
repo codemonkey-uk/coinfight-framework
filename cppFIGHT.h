@@ -334,8 +334,6 @@ namespace CPPFight
 	};
 
 	void Serialise(FILE* f, const GameState& gameState);
-	
-	const clock_t PLAYER_TIME_PER_GAME = CFIGHT_PLAYER_TIME_PER_GAME;
 
 }//namespace CPPFight
 

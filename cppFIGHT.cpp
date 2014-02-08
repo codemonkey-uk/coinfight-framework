@@ -61,6 +61,7 @@
 
 bool gVerbose = false;
 int gGamesPerMatch=3;
+int gSecondsPerGame=30;
 
 std::string gTspec="re"; // Round Robin and Elimination
 std::string gOspec="t";	 // Output spec: t = text, j = json
@@ -70,7 +71,7 @@ clock_t ticks_per_s = sysconf(_SC_CLK_TCK);
 extern "C" clock_t CFIGHT_GetPlayerTicksPerGame()
 {
 	static const clock_t ticks = sysconf(_SC_CLK_TCK);
-	return ticks*30;
+	return ticks*gSecondsPerGame;
 }
 
 //implementation
@@ -585,7 +586,7 @@ namespace CPPFight {
 					Move move = myPlayerList[whosturn]->GetMove(firewall);					
 					myPlayerClocks[whosturn] += (times(&t)-myCurrentTurnClockStart);
 					
-					if (myPlayerClocks[whosturn]>PLAYER_TIME_PER_GAME)
+					if (myPlayerClocks[whosturn]>CFIGHT_PLAYER_TIME_PER_GAME)
 						throw OutOfTimeException();
 
 					//if (*this!=firewall)
@@ -620,7 +621,7 @@ namespace CPPFight {
 					Serialise(stderr, myPlayersChange[whosturn]);
 					fprintf(stderr, "after %fs of %fs.\n", 
 						(float)myPlayerClocks[whosturn]/ticks_per_s,
-						(float)PLAYER_TIME_PER_GAME/ticks_per_s);
+						(float)CFIGHT_PLAYER_TIME_PER_GAME/ticks_per_s);
 					
 					//eliminate "cheaters" by taking all their money
 					myPlayersChange[whosturn].RemoveChange( myPlayersChange[whosturn] );
@@ -1162,6 +1163,19 @@ void AddCLPlayer(
 	}
 }
 
+int ParseCLInt(const char* str, int lower, int upper, const char* docstr)
+{
+	int result=atoi(str);
+	if (result<lower || result>upper) {
+		fprintf(stderr,"Illegal %s: %s (%i)\n", 
+			docstr,
+			str,
+			result);
+		exit(-1);
+	}
+	return result;
+}
+
 void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 {	
 	std::string command, ai_name, author;
@@ -1223,13 +1237,11 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 					break;
 				// set Games per match (1v1)
 				case 'g':
-					gGamesPerMatch=atoi(command.c_str());
-					if (gGamesPerMatch<1) {
-						fprintf(stderr,"Illegal games per match: %s (%i)\n", 
-							command.c_str(),
-							gGamesPerMatch);
-						exit(-1);
-					}
+					gGamesPerMatch=ParseCLInt(command.c_str(),1,65536,"games per match");
+					command="";
+					break;
+				case 's':
+					gSecondsPerGame=ParseCLInt(command.c_str(),1,60*60,"seconds per game");
 					command="";
 					break;
 				default:
