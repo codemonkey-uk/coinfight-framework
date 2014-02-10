@@ -74,6 +74,8 @@ extern "C" clock_t CFIGHT_GetPlayerTicksPerGame()
 	return ticks*gSecondsPerGame;
 }
 
+void Split(const std::string& in, char c, std::vector<std::string>* pOut);
+
 //implementation
 namespace CPPFight {
 
@@ -673,29 +675,53 @@ namespace CPPFight {
 			change.GetCount(QUARTER),QUARTER);
 	}
 
+	std::string ReadLine(FILE* f)
+	{
+		std::string r = "";
+		const int buffsize = 16;
+		char buffer[buffsize];
+		while (fgets(buffer, buffsize, f))
+		{
+			r.append(buffer);
+			if (r[r.size()-1]=='\n')
+			{
+				r.pop_back();
+				break;
+			}
+		}
+		return r;
+	}
+	
 	// Read Change
 	bool Serialise(FILE* f, Change* change)
 	{
 		// empty
 		Change result;
-		// read as written
-		int c[COIN_COUNT], d[COIN_COUNT];
+		
+		std::string line = ReadLine(f);
+		std::vector<std::string> pairs;
+		Split(line, ',', &pairs);
+		for(int i=0;i!=pairs.size();++i)
+		{
+			std::vector<std::string> pair;
+			
+			// expect a pair separated by an 'x'
+			Split(pairs[i], 'x', &pair);
+			if (pair.size()!=2) return false;
+			
+			// convert to integers
+			int c = atoi(pair[0].c_str());
+			int d = atoi(pair[1].c_str());
 
-		if (fscanf(f, "%dx%d, %dx%d, %dx%d, %dx%d\n", 
-			&c[0],&d[0],
-			&c[1],&d[1],
-			&c[2],&d[2],
-			&c[3],&d[3])==8)
-		{			
-			for(int i=0;i!=COIN_COUNT;++i)
-			{
-				if (d[i]!=COINLIST[i]) return false;
-				result.InsertCoins((Coin)d[i],c[i]);
-			}
-			*change=result;
-			return true;
+			// check its a valid face value
+			if (std::find(COINLIST, COINLIST+COIN_COUNT, d)==COINLIST+COIN_COUNT)
+				return false;
+			
+			// add to the pool
+			result.InsertCoins((Coin)d,c);
 		}
-		return false;
+		
+		return true;
 	}
 		
 	// Write Game
@@ -1655,7 +1681,7 @@ int Elimination(const CPPFight::PlayerList& tournament_, TournamentResultsFormat
 int main(int argc, char* argv[])
 {
 	CFIGHT_CreateAllPlayers();
-	
+
 	std::vector<std::string> moves;
 	AddCLPlayers(argc, argv, &moves);
 	
