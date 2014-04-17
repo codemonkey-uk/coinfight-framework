@@ -39,6 +39,20 @@ deserialiseGame l = Game {
 	game_header = words $ head l
 	change = tail l
 
+data Move = Move {
+	give :: Coin,
+	takeCoin :: Change
+} deriving( Show )
+
+serialiseCoin :: Coin -> String
+serialiseCoin coin = (show $ quantity coin) ++ "x" ++ (show $faceValue coin)
+
+serialiseChange :: Change -> String
+serialiseChange c = intercalate ", " $ map serialiseCoin $ coins c
+
+serialiseMove :: Move -> String
+serialiseMove move = (serialiseCoin $ give move) ++ "\n" ++ (serialiseChange $ takeCoin move)
+
 processGame :: String -> String
 processGame contents = head $ lines contents
 
