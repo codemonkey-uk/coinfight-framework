@@ -40,8 +40,8 @@ deserialiseGame l = Game {
 	change = tail l
 
 data Move = Move {
-	give :: Coin,
-	takeCoin :: Change
+	giveCoin :: Coin,
+	takeChange :: Change
 } deriving( Show )
 
 serialiseCoin :: Coin -> String
@@ -51,10 +51,23 @@ serialiseChange :: Change -> String
 serialiseChange c = intercalate ", " $ map serialiseCoin $ coins c
 
 serialiseMove :: Move -> String
-serialiseMove move = (serialiseCoin $ give move) ++ "\n" ++ (serialiseChange $ takeCoin move)
+serialiseMove move = (serialiseCoin $ giveCoin move) ++ "\n" ++ (serialiseChange $ takeChange move)
+
+currentPlayer :: Game -> Int
+currentPlayer game = mod (turn game) (playerCount game)
+
+selectMove :: Game -> Move
+selectMove game = Move { 
+	giveCoin = Coin {
+		faceValue = faceValue $ head (coins change),
+		quantity = 1 
+	},
+	takeChange = Change{ coins = [] }
+} where change = (playerChange game) !! (currentPlayer game)
 
 processGame :: String -> String
-processGame contents = head $ lines contents
+processGame contents = serialiseMove $ selectMove game 
+	where game = deserialiseGame $ lines contents
 
 main = do
 	contents <- getContents
