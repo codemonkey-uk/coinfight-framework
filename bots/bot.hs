@@ -33,10 +33,11 @@ deserialiseGame :: [String] -> Game
 deserialiseGame l = Game {
 	playerCount = read $ game_header !! 0, 
 	turn = read $ game_header !! 1,
-	tableChange = Change [],
-	playerChange = []
+	tableChange = deserialiseChange $ head change,
+	playerChange = map deserialiseChange (tail change)
 } where 
 	game_header = words $ head l
+	change = tail l
 
 processGame :: String -> String
 processGame contents = head $ lines contents
