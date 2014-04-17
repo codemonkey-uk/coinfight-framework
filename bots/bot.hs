@@ -24,6 +24,11 @@ deserialiseCoin str = Coin {
 	quantity = read $ values !! 0
 } where values = splitOn "x" str
 
+deserialiseChange :: String -> Change
+deserialiseChange str = Change {
+	coins = map deserialiseCoin values
+} where values = splitOn "," str
+
 deserialiseGame :: [String] -> Game
 deserialiseGame l = Game {
 	playerCount = read $ game_header !! 0, 
