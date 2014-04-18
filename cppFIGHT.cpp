@@ -59,6 +59,7 @@
 
 #include "pplayer.h"
 
+bool gStopOnError = false;
 bool gVerbose = false;
 int gGamesPerMatch=3;
 int gSecondsPerGame=30;
@@ -627,6 +628,8 @@ namespace CPPFight {
 					
 					//eliminate "cheaters" by taking all their money
 					myPlayersChange[whosturn].RemoveChange( myPlayersChange[whosturn] );
+					
+					if (gStopOnError) exit(1);
 				}
 
 				if (myPlayersChange[whosturn].IsEmpty())
@@ -1260,6 +1263,12 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 				case 'v':
 					gVerbose=true;
 					command="";
+					i=ii;
+					break;
+				case 'f':
+					gStopOnError=true;
+					command="";
+					i=ii;
 					break;
 				// set Games per match (1v1)
 				case 'g':
