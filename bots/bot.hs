@@ -26,7 +26,7 @@ deserialiseCoin str = Coin {
 
 deserialiseChange :: String -> Change
 deserialiseChange str = Change {
-	coins = map deserialiseCoin values
+	coins = [ x | x <- map deserialiseCoin values, quantity x > 0 ]
 } where values = splitOn "," str
 
 deserialiseGame :: [String] -> Game
@@ -51,7 +51,7 @@ serialiseChange :: Change -> String
 serialiseChange c = intercalate ", " $ map serialiseCoin $ coins c
 
 serialiseMove :: Move -> String
-serialiseMove move = (serialiseCoin $ giveCoin move) ++ "\n" ++ (serialiseChange $ takeChange move)
+serialiseMove move = (show $ faceValue $ giveCoin move) ++ "\n" ++ (serialiseChange $ takeChange move)
 
 currentPlayer :: Game -> Int
 currentPlayer game = mod (turn game) (playerCount game)
