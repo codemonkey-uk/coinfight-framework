@@ -7,15 +7,11 @@ data Coin = Coin {
 	quantity :: Int
 } deriving( Show )
 
-data Change = Change {
-	coins :: [Coin]
-} deriving( Show )
-
 data Game = Game {
 	playerCount :: Int,
 	turn :: Int,
-	tableChange :: Change,
-	playerChange :: [Change]
+	tableChange :: [Coin],
+	playerChange :: [[Coin]]
 } deriving( Show )
 
 deserialiseCoin :: String -> Coin
@@ -24,10 +20,9 @@ deserialiseCoin str = Coin {
 	quantity = read $ values !! 0
 } where values = splitOn "x" str
 
-deserialiseChange :: String -> Change
-deserialiseChange str = Change {
-	coins = [ x | x <- map deserialiseCoin values, quantity x > 0 ]
-} where values = splitOn "," str
+deserialiseChange :: String -> [Coin]
+deserialiseChange str = [ x | x <- map deserialiseCoin values, quantity x > 0 ]
+	where values = splitOn "," str
 
 deserialiseGame :: [String] -> Game
 deserialiseGame l = Game {
@@ -41,14 +36,14 @@ deserialiseGame l = Game {
 
 data Move = Move {
 	giveCoin :: Coin,
-	takeChange :: Change
+	takeChange :: [Coin]
 } deriving( Show )
 
 serialiseCoin :: Coin -> String
 serialiseCoin coin = (show $ quantity coin) ++ "x" ++ (show $faceValue coin)
 
-serialiseChange :: Change -> String
-serialiseChange c = intercalate ", " $ map serialiseCoin $ coins c
+serialiseChange :: [Coin] -> String
+serialiseChange c = intercalate ", " $ map serialiseCoin $ c
 
 serialiseMove :: Move -> String
 serialiseMove move = (show $ faceValue $ giveCoin move) ++ "\n" ++ (serialiseChange $ takeChange move)
@@ -59,10 +54,10 @@ currentPlayer game = mod (turn game) (playerCount game)
 selectMove :: Game -> Move
 selectMove game = Move { 
 	giveCoin = Coin {
-		faceValue = faceValue $ head (coins change),
+		faceValue = faceValue $ head change,
 		quantity = 1 
 	},
-	takeChange = Change{ coins = [] }
+	takeChange = []
 } where change = (playerChange game) !! (currentPlayer game)
 
 processGame :: String -> String
