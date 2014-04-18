@@ -51,14 +51,40 @@ serialiseMove move = (show $ faceValue $ giveCoin move) ++ "\n" ++ (serialiseCha
 currentPlayer :: Game -> Int
 currentPlayer game = mod (turn game) (playerCount game)
 
+coinValue :: Coin -> Int
+coinValue coin = (faceValue coin) * (quantity coin)
+
+-- add a coin to a change pool, 
+-- increasing the quantity of an existing coin if it's face value matches
+addCoin :: Coin -> [Coin] -> [Coin]
+addCoin coin [] = [coin]
+addCoin coin (x:xs) = 
+	if (faceValue x) == (faceValue coin)
+	then Coin{ faceValue=(faceValue x), quantity=(quantity x)+(quantity coin) }:xs
+	else x:addCoin coin xs
+
+-- Returns change < value from 
+takeChangeFrom :: Int -> [Coin] -> [Coin]
+takeChangeFrom v [] = []
+takeChangeFrom v (x:xs) =
+	if (quantity took) < 1
+	then (takeChangeFrom v xs)
+	else took:takeChangeFrom (v-(coinValue took)) xs
+	where took = Coin{ 
+		faceValue= (faceValue x), 
+		quantity = minimum [(quot (v-1) (faceValue x)), (quantity x)]
+	}
+
 selectMove :: Game -> Move
 selectMove game = Move { 
-	giveCoin = Coin {
+	giveCoin = g,
+	takeChange = takeChangeFrom (coinValue g) (tableChange game)
+} where 
+	change = (playerChange game) !! (currentPlayer game)
+	g = Coin {
 		faceValue = faceValue $ head change,
 		quantity = 1 
-	},
-	takeChange = []
-} where change = (playerChange game) !! (currentPlayer game)
+	}
 
 processGame :: String -> String
 processGame contents = serialiseMove $ selectMove game 
