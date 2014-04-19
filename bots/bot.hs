@@ -54,6 +54,20 @@ currentPlayer game = mod (turn game) (playerCount game)
 coinValue :: Coin -> Int
 coinValue coin = (faceValue coin) * (quantity coin)
 
+changeValue :: [Coin] -> Int
+changeValue [] = 0
+changeValue (x:xs) = (coinValue x) + (changeValue xs)
+
+moveValue :: Move -> Int
+moveValue move = (changeValue $ takeChange move) - (coinValue $ giveCoin move)
+
+bestMove :: [Move] -> Move
+bestMove [x] = x
+bestMove (x:xs) 
+	| (moveValue x) > (moveValue bestTail) = x
+	| otherwise = bestTail 
+	where bestTail = bestMove xs
+    
 -- add a coin to a change pool, 
 -- increasing the quantity of an existing coin if it's face value matches
 addCoin :: Coin -> [Coin] -> [Coin]
@@ -75,16 +89,16 @@ takeChangeFrom v (x:xs) =
 		quantity = minimum [(quot (v-1) (faceValue x)), (quantity x)]
 	}
 
+generateMoves :: [Coin] -> [Coin] -> [Move]
+generateMoves [] tableChange = []
+generateMoves (x:xs) tableChange = Move { 
+	giveCoin = Coin{ faceValue = faceValue x, quantity = 1 },
+	takeChange = takeChangeFrom (faceValue x) tableChange
+} : (generateMoves xs tableChange)
+
 selectMove :: Game -> Move
-selectMove game = Move { 
-	giveCoin = g,
-	takeChange = takeChangeFrom (coinValue g) (tableChange game)
-} where 
-	change = (playerChange game) !! (currentPlayer game)
-	g = Coin {
-		faceValue = faceValue $ head change,
-		quantity = 1 
-	}
+selectMove game = bestMove $ generateMoves changePool (tableChange game)
+	where changePool = (playerChange game) !! (currentPlayer game)
 
 processGame :: String -> String
 processGame contents = serialiseMove $ selectMove game 
