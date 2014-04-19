@@ -16,23 +16,21 @@ data Game = Game {
 
 deserialiseCoin :: String -> Coin
 deserialiseCoin str = Coin {
-	faceValue = read $ values !! 1,
-	quantity = read $ values !! 0
-} where values = splitOn "x" str
+	faceValue = read $ f,
+	quantity = read $ q
+} where (q:f:_) = splitOn "x" str
 
 deserialiseChange :: String -> [Coin]
 deserialiseChange str = [ x | x <- map deserialiseCoin values, quantity x > 0 ]
 	where values = splitOn "," str
 
 deserialiseGame :: [String] -> Game
-deserialiseGame l = Game {
-	playerCount = read $ game_header !! 0, 
-	turn = read $ game_header !! 1,
-	tableChange = deserialiseChange $ head change,
-	playerChange = map deserialiseChange (tail change)
-} where 
-	game_header = words $ head l
-	change = tail l
+deserialiseGame (header:table_change:player_change) = Game {
+	playerCount = read a, 
+	turn = read b,
+	tableChange = deserialiseChange table_change,
+	playerChange = map deserialiseChange player_change
+} where (a:b:_) = words $ header
 
 data Move = Move {
 	giveCoin :: Coin,
