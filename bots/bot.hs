@@ -55,8 +55,7 @@ coinValue :: Coin -> Int
 coinValue coin = (faceValue coin) * (quantity coin)
 
 changeValue :: [Coin] -> Int
-changeValue [] = 0
-changeValue (x:xs) = (coinValue x) + (changeValue xs)
+changeValue x = sum $ map coinValue x
 
 moveValue :: Move -> Int
 moveValue move = (changeValue $ takeChange move) - (coinValue $ giveCoin move)
