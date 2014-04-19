@@ -1,6 +1,7 @@
 import Data.Char
 import Data.List
 import Data.List.Split
+import Data.Ord
 
 data Coin = Coin {
 	faceValue :: Int,
@@ -41,7 +42,7 @@ serialiseCoin :: Coin -> String
 serialiseCoin coin = (show $ quantity coin) ++ "x" ++ (show $faceValue coin)
 
 serialiseChange :: [Coin] -> String
-serialiseChange c = intercalate ", " $ map serialiseCoin $ c
+serialiseChange = intercalate ", " . map serialiseCoin
 
 serialiseMove :: Move -> String
 serialiseMove move = (show $ faceValue $ giveCoin move) ++ "\n" ++ (serialiseChange $ takeChange move)
@@ -53,17 +54,13 @@ coinValue :: Coin -> Int
 coinValue coin = (faceValue coin) * (quantity coin)
 
 changeValue :: [Coin] -> Int
-changeValue x = sum $ map coinValue x
+changeValue = sum . map coinValue
 
 moveValue :: Move -> Int
 moveValue move = (changeValue $ takeChange move) - (coinValue $ giveCoin move)
 
 bestMove :: [Move] -> Move
-bestMove [x] = x
-bestMove (x:xs) 
-	| (moveValue x) > (moveValue bestTail) = x
-	| otherwise = bestTail 
-	where bestTail = bestMove xs
+bestMove = maximumBy (comparing moveValue)
     
 -- add a coin to a change pool, 
 -- increasing the quantity of an existing coin if it's face value matches
