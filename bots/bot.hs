@@ -101,6 +101,4 @@ processGame :: String -> String
 processGame = serialiseMove . selectMove . deserialiseGame . lines
 
 -- IO: reads game state from stdin and returns a move to stdout
-main = do
-	contents <- getContents
-	putStrLn $ processGame contents
+main = interact processGame
