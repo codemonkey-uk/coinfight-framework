@@ -83,6 +83,7 @@ takeChangeFrom v (x:xs) =
 		quantity = minimum [(quot (v-1) (faceValue x)), (quantity x)]
 	}
 
+-- generates a move for each coin that could be played by the current player
 generateMoves :: [Coin] -> [Coin] -> [Move]
 generateMoves [] tableChange = []
 generateMoves (x:xs) tableChange = Move { 
@@ -90,14 +91,16 @@ generateMoves (x:xs) tableChange = Move {
 	takeChange = takeChangeFrom (faceValue x) tableChange
 } : (generateMoves xs tableChange)
 
+-- Takes a game state, and returns a move
 selectMove :: Game -> Move
 selectMove game = bestMove $ generateMoves changePool (tableChange game)
 	where changePool = (playerChange game) !! (currentPlayer game)
 
+-- Takes game state as a string, and returns a move as a string
 processGame :: String -> String
-processGame contents = serialiseMove $ selectMove game 
-	where game = deserialiseGame $ lines contents
+processGame = serialiseMove . selectMove . deserialiseGame . lines
 
+-- IO: reads game state from stdin and returns a move to stdout
 main = do
 	contents <- getContents
 	putStrLn $ processGame contents
