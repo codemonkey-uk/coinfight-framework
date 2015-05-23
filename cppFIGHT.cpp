@@ -1,4 +1,4 @@
-// cppFIGHT v1.9a 
+// cppFIGHT v1.9a
 // An AI tournament Framework for "FIGHT!", a free game from Cheapass Games
 // (c) T.Frogley 2002-2013
 // With thanks also to Oscar Cooper
@@ -15,8 +15,8 @@
 //
 
 //disable MSVC++ long symbols warning
-#ifdef _MSC_VER 
-	
+#ifdef _MSC_VER
+
 	#pragma warning( disable : 4786 )
 
 	#ifdef max
@@ -135,7 +135,7 @@ namespace CPPFight {
 	}
 
 	// gets the index of the specified coin ----------------------------------
-	class CoinException : public Exception 
+	class CoinException : public Exception
 	{
 		public:
 		CoinException(Coin c) {
@@ -146,7 +146,7 @@ namespace CPPFight {
 		virtual std::string ToString() const { return mError; }
 		std::string mError;
 	};
-	
+
 	inline int GetCoinIndex( const Coin coinType )
 	{
 		switch(coinType){
@@ -159,7 +159,7 @@ namespace CPPFight {
 			case QUARTER:
 				return 3;
 			default:
-				throw CoinException(coinType);		
+				throw CoinException(coinType);
 		}
 	}
 
@@ -172,7 +172,7 @@ namespace CPPFight {
 
 	class PlayerRegister {
 		public:
-			static PlayerRegister& Instance() 
+			static PlayerRegister& Instance()
 			{
 				static PlayerRegister instance;
 				return instance;
@@ -185,18 +185,18 @@ namespace CPPFight {
 				myActivePlayers.push_back(player);
 			}
 
-			void Exclude(std::string& match)
+			void Exclude(const std::string& match)
 			{
 				PlayerList filtered;
 				filtered.reserve(myActivePlayers.size());
-				for(PlayerList::iterator i = myActivePlayers.begin(); 
+				for(PlayerList::iterator i = myActivePlayers.begin();
 					i!=myActivePlayers.end(); ++i) {
 					if ((*i)->GetTitle()!=match && (*i)->GetAuthor()!=match)
 						filtered.push_back(*i);
 				}
 				myActivePlayers.swap(filtered);
 			}
-			
+
 			// get all players registered at time of calling
 			const PlayerList& GetPlayerList () const {
 				return myActivePlayers;
@@ -205,7 +205,7 @@ namespace CPPFight {
 		private:
 			PlayerRegister()
 			{}
-			
+
 			PlayerList myRegisteredPlayers;
 			PlayerList myActivePlayers;
 	};
@@ -213,8 +213,8 @@ namespace CPPFight {
 	//
 	// class Change
 	//
-	
-	class ChangeException : public Exception 
+
+	class ChangeException : public Exception
 	{
 		public:
 		ChangeException(Coin c, int n) {
@@ -260,7 +260,7 @@ namespace CPPFight {
 	int Change::GetCount(Coin c) const {
 		return myChange[GetCoinIndex(c)];
 	}
-	
+
 	//return the current value for one type of coin
 	int Change::GetValue(Coin c) const {
 		return c * GetCount(c);
@@ -355,20 +355,20 @@ namespace CPPFight {
 	{
 		PlayerRegister::Instance().RegisterPlayer( this );
 	}
-	
-	//virtual 
+
+	//virtual
 	void Player::NotifyGameStart(const Game&)
 	{
 		//support legacy behaviour, fwd notification
 		NotifyGameStart();
 	}
 
-	//virtual 
+	//virtual
 	void Player::NotifyWon()
 	{
 	}
 
-	//virtual 
+	//virtual
 	void Player::NotifyEliminated()
 	{
 	}
@@ -378,7 +378,7 @@ namespace CPPFight {
 	{
 	}
 
-	//virtual 
+	//virtual
 	Player::~Player()
 	{
 	}
@@ -389,10 +389,10 @@ namespace CPPFight {
 
 	static int games_played = 0;
 
-	GameState::GameState(int player_count) : 
+	GameState::GameState(int player_count) :
 		myTurn(0),
-		myPlayersChange( player_count )	  
-	{ 		
+		myPlayersChange( player_count )
+	{
 		//each player gets...
 		std::vector< Change >::iterator itr = myPlayersChange.begin();
 		std::vector< Change >::iterator end = myPlayersChange.end();
@@ -404,17 +404,17 @@ namespace CPPFight {
 		}
 	}
 
-	int GameState::GetPlayerCount() const 
+	int GameState::GetPlayerCount() const
 	{
 		return static_cast<int>(myPlayersChange.size());
 	}
-	
-	int GameState::GetCurrentPlayer() const 
+
+	int GameState::GetCurrentPlayer() const
 	{
 		return myTurn%GetPlayerCount();
 	}
-	
-	int GameState::GetCurrentTurn() const 
+
+	int GameState::GetCurrentTurn() const
 	{
 		return myTurn;
 	}
@@ -424,7 +424,7 @@ namespace CPPFight {
 	{
 		return (++currentPlayerIndex)%GetPlayerCount();
 	}
-	
+
 	int GameState::GetNextActivePlayer(int currentPlayerIndex) const
 	{
 		do{
@@ -451,7 +451,7 @@ namespace CPPFight {
 		}
 		return result;
 	}
-	
+
 	const Change& GameState::GetPlayerChange( int player ) const
 	{
 		if (player<0 || player>=GetPlayerCount())
@@ -476,7 +476,7 @@ namespace CPPFight {
 		result.myChange.InsertCoin( move.GetCoin() );
 		result.myChange.RemoveChange( move.GetChange() );
 		result.myPlayersChange[whosturn].InsertChange( move.GetChange() );
-		
+
 		//skip to next active player (exit if game over)
 		do{
 			result.myTurn++;
@@ -484,7 +484,7 @@ namespace CPPFight {
 
 		return result;
 	}
-	
+
 	//
 	//class Game
 	//
@@ -492,7 +492,7 @@ namespace CPPFight {
 	Game::Game(int player_count) : GameState(player_count)
 	{
 	}
-	
+
 	// create a new game from serialised state
 	Game::Game(FILE *f, int player_count, int turn)
 		: GameState(player_count)
@@ -508,28 +508,28 @@ namespace CPPFight {
 				}
 			}
 		}
-		
+
 		// TOOD: Validate this game state is legitimately achievable
 	}
-	
+
 
 	//
 	// Tournament Game
 	//
 
 	class TournamentGame : public Game {
-		
+
 		public:
 
 			//to construct a game pass it a list of players
 			TournamentGame (const PlayerList& players);
 			TournamentGame (const PlayerList& players, int turn, FILE *f);
-			
-			//plays out a game, calling out to players for moves and 
+
+			//plays out a game, calling out to players for moves and
 			//returning the UID of the winning player
 			int PlayGame();
 
-			int GetPlayerUID( int player ) const; 
+			int GetPlayerUID( int player ) const;
 			clock_t GetPlayerTimeTaken( int player ) const;
 
 
@@ -542,7 +542,7 @@ namespace CPPFight {
 	};
 
 
-	TournamentGame::TournamentGame(const PlayerList& players) : 
+	TournamentGame::TournamentGame(const PlayerList& players) :
 		Game( static_cast<int>(players.size()) ),
 		myPlayerList( players ),
 		myPlayerClocks( players.size(), 0)
@@ -551,7 +551,7 @@ namespace CPPFight {
 	TournamentGame::TournamentGame(const PlayerList& players, int turn, FILE *f) :
 		Game( f, static_cast<int>(players.size()), turn )
 	{	}
-	
+
 	struct NotifyGameStartFn
 	{
 		NotifyGameStartFn( const Game& game )
@@ -571,24 +571,24 @@ namespace CPPFight {
 
 		std::for_each(myPlayerList.begin(),myPlayerList.end(),NotifyGameStartFn(*this));
 		std::fill(myPlayerClocks.begin(),myPlayerClocks.end(),0);
-		
+
 		do{
 			const int whosturn = GetCurrentPlayer();
-			
+
 			if (!myPlayersChange[whosturn].IsEmpty())
 			{
-				bool okay=false;	
+				bool okay=false;
 				try{
-					
+
 					if (gVerbose) Serialise(stderr, *this);
-					
+
 					TournamentGame firewall(*this);
-					
+
 					tms t;
 					myCurrentTurnClockStart = times(&t);
-					Move move = myPlayerList[whosturn]->GetMove(firewall);					
+					Move move = myPlayerList[whosturn]->GetMove(firewall);
 					myPlayerClocks[whosturn] += (times(&t)-myCurrentTurnClockStart);
-					
+
 					if (myPlayerClocks[whosturn]>CFIGHT_PLAYER_TIME_PER_GAME)
 						throw OutOfTimeException();
 
@@ -601,34 +601,34 @@ namespace CPPFight {
 					myChange.InsertCoin( move.GetCoin() );
 					myChange.RemoveChange( move.GetChange() );
 					myPlayersChange[whosturn].InsertChange( move.GetChange() );
-					
+
 					okay=true;
 				}
 				catch(Exception& e)
 				{
-					fprintf(stderr, "Caught Exception: %s\n", e.ToString().c_str());	
+					fprintf(stderr, "Caught Exception: %s\n", e.ToString().c_str());
 				}
 				catch(...)
 				{
 					fprintf(stderr, "Caught unknown Exception running.\n");
 				}
-				
+
 				if (!okay)
 				{
-					fprintf(stderr, "Eliminated: %s by %s on turn %i\n", 
+					fprintf(stderr, "Eliminated: %s by %s on turn %i\n",
 						myPlayerList[whosturn]->GetTitle().c_str(),
 						myPlayerList[whosturn]->GetAuthor().c_str(),
 						GetCurrentTurn());
-						
+
 					fprintf(stderr, "Eliminated player had:\n");
 					Serialise(stderr, myPlayersChange[whosturn]);
-					fprintf(stderr, "after %fs of %fs.\n", 
+					fprintf(stderr, "after %fs of %fs.\n",
 						(float)myPlayerClocks[whosturn]/ticks_per_s,
 						(float)CFIGHT_PLAYER_TIME_PER_GAME/ticks_per_s);
-					
+
 					//eliminate "cheaters" by taking all their money
 					myPlayersChange[whosturn].RemoveChange( myPlayersChange[whosturn] );
-					
+
 					if (gStopOnError) exit(1);
 				}
 
@@ -655,7 +655,7 @@ namespace CPPFight {
 	}
 
 	//virtual
-	clock_t TournamentGame::GetPlayerTimeTaken( int player ) const	
+	clock_t TournamentGame::GetPlayerTimeTaken( int player ) const
 	{
 		if (player<0 || player>=GetPlayerCount())
 			throw Exception();
@@ -664,14 +664,14 @@ namespace CPPFight {
 		return myPlayerClocks[player] + (times(&t)-myCurrentTurnClockStart);
 	}
 
-	// 
+	//
 	// non-member serialise functions
-	// 
-	
+	//
+
 	// Write Change
 	void Serialise(FILE* f, const Change& change)
 	{
-		fprintf(f, "%ix%i, %ix%i, %ix%i, %ix%i\n", 
+		fprintf(f, "%ix%i, %ix%i, %ix%i, %ix%i\n",
 			change.GetCount(PENNY),PENNY,
 			change.GetCount(NICKEL),NICKEL,
 			change.GetCount(DIME),DIME,
@@ -694,24 +694,24 @@ namespace CPPFight {
 		}
 		return r;
 	}
-	
+
 	// Read Change
 	bool Serialise(FILE* f, Change* change)
 	{
 		// empty
 		Change result;
-		
+
 		std::string line = ReadLine(f);
 		std::vector<std::string> pairs;
 		Split(line, ',', &pairs);
 		for(int i=0;i!=pairs.size();++i)
 		{
 			std::vector<std::string> pair;
-			
+
 			// expect a pair separated by an 'x'
 			Split(pairs[i], 'x', &pair);
 			if (pair.size()!=2) return false;
-			
+
 			// convert to integers
 			int c = atoi(pair[0].c_str());
 			int d = atoi(pair[1].c_str());
@@ -719,14 +719,14 @@ namespace CPPFight {
 			// check its a valid face value
 			if (std::find(COINLIST, COINLIST+COIN_COUNT, d)==COINLIST+COIN_COUNT)
 				return false;
-			
+
 			// add to the pool
 			result.InsertCoins((Coin)d,c);
 		}
-		
+
 		return true;
 	}
-		
+
 	// Write Game
 	void Serialise(FILE* f, const GameState& gameState)
 	{
@@ -737,11 +737,11 @@ namespace CPPFight {
 			Serialise( f, gameState.GetPlayerChange(i) );
 		}
 	}
-	
+
 	bool Serialise(FILE* f, const PlayerList& all_players, TournamentGame** pGame)
 	{
 		bool success=false;
-		
+
 		*pGame=0;
 		int player_c, turn;
 		if (fscanf(f, "%d %d\n", &player_c, &turn )==2)
@@ -751,27 +751,27 @@ namespace CPPFight {
 				// create subset
 				PlayerList players(all_players);
 				players.resize(player_c);
-				
+
 				*pGame=new TournamentGame(players,turn,f);
 				success=true;
 			}
 			else
 			{
-				fprintf(stderr, "Too many players, read %i, maximum %i\n", 
+				fprintf(stderr, "Too many players, read %i, maximum %i\n",
 					player_c, static_cast<int>(all_players.size()));
 			}
 		}
-		
+
 		return success;
 	}
-	
+
 	// Write Move
 	void Serialise(FILE* f, const Move& move)
 	{
 		fprintf(f, "%i\n",move.GetCoin());
 		Serialise( f, move.GetChange() );
 	}
-	
+
 	// Read Move
 	bool Serialise(FILE* f, Move* pMove)
 	{
@@ -785,21 +785,21 @@ namespace CPPFight {
 			Change take;
 			if (Serialise(f, &take))
 			{
-				*pMove = Move(give, take);			
+				*pMove = Move(give, take);
 				result=true;
 			}
 		}
-		
+
 		return result;
 	}
-		
+
 	//
 	// Utility functions
 	//
-	
+
 	// gets the largest value of change possible from a coin -----------------
 
-	Change MaximumChangeValue (const Change& availableChange, 
+	Change MaximumChangeValue (const Change& availableChange,
 		                       const Coin coinToChange)
 	{
 		Change result;
@@ -816,8 +816,8 @@ namespace CPPFight {
 
 				const int maxValue = coinToChange - result.GetTotalValue() - 1;
 				const int maxCoins = maxValue / testCoin;
-				
-				const int numCoinsToTake = 
+
+				const int numCoinsToTake =
 					std::min(maxCoins, availableChange.GetCount(testCoin));
 
 				if (numCoinsToTake > 0)
@@ -832,7 +832,7 @@ namespace CPPFight {
 		return result;
 	}
 
-	Change MaximumChangeCount (const Change& availableChange, 
+	Change MaximumChangeCount (const Change& availableChange,
 		                       const Coin coinToChange)
 	{
 		Change result;
@@ -849,8 +849,8 @@ namespace CPPFight {
 
 				const int maxValue = coinToChange - result.GetTotalValue() - 1;
 				const int maxCoins = maxValue / testCoin;
-				
-				const int numCoinsToTake = 
+
+				const int numCoinsToTake =
 					std::min(maxCoins, availableChange.GetCount(testCoin));
 
 				if (numCoinsToTake > 0)
@@ -872,13 +872,13 @@ namespace CPPFight {
 	//				IN		maximum value of change that may be taken
 	//				OUT		all possible change combinations
 	//
-	// purpose:		finds all possible change combinations from the given 
+	// purpose:		finds all possible change combinations from the given
 	//              pool, up to the maximum value specified
 	//------------------------------------------------------------------------
 
 	void GetAllPossibleChange (
-		const Change& availableChange, 
-		const int maximumValue, 
+		const Change& availableChange,
+		const int maximumValue,
 		Change::List& change)
 	{
 		// calculate the maximum number of different change combinations
@@ -889,7 +889,7 @@ namespace CPPFight {
 
 		for (coinIndex = 0; coinIndex < CPPFight::COIN_COUNT; ++coinIndex)
 		{
-			maxSize *= 1 + 
+			maxSize *= 1 +
 				availableChange.GetCount(CPPFight::COINLIST[coinIndex]);
 		}
 
@@ -912,9 +912,9 @@ namespace CPPFight {
 
 			if (availableCoins > 0)
 			{
-				int currentCount = 0; // track number of new combinations 
+				int currentCount = 0; // track number of new combinations
 					// using the current coin
-				
+
 				// try adding coins to each previous change combinations
 
 				for (int oldIndex = 0; oldIndex < totalCount; ++oldIndex)
@@ -924,7 +924,7 @@ namespace CPPFight {
 					int value = oldChange.GetTotalValue() + coin;
 						// tracks the value of the new combination
 
-					int coinsToAdd = 1; // tracks the number of coins of 
+					int coinsToAdd = 1; // tracks the number of coins of
 						// current type to add to old combination
 
 					// only create change combinations if their value does not
@@ -946,7 +946,7 @@ namespace CPPFight {
 		}
 
 		// notes: this code is designed to work for any combination of coin
-		// types. in practice, the largest 'maximumValue' received will be 24, 
+		// types. in practice, the largest 'maximumValue' received will be 24,
 		// and the QUARTER coins will never be used. this leaves considerable
 		// room for optimisation if necessary.
 	}
@@ -956,8 +956,8 @@ namespace CPPFight {
 // Implementation of C linkage function interface
 //
 
-int CFIGHT_Coin2Index( CFIGHT_Coin coinType ){	
-	return CPPFight::GetCoinIndex( coinType );	
+int CFIGHT_Coin2Index( CFIGHT_Coin coinType ){
+	return CPPFight::GetCoinIndex( coinType );
 }
 
 CFIGHT_Coin CFIGHT_Index2Coin( int i ){
@@ -996,7 +996,7 @@ int CFIGHT_Change_RemoveChange( CFIGHT_Change* change, const CFIGHT_Change* othe
 	return CPPFight::CoinArray::RemoveCoins( change->change, other->change );
 }
 
-// get the largest value of change possible from a coin 
+// get the largest value of change possible from a coin
 void CFIGHT_MaximumChangeValue (const CFIGHT_Change* availableChange, CFIGHT_Coin coinToChange, CFIGHT_Change* result){
 	CPPFight::MaximumChangeValue(CPPFight::Change(*availableChange), coinToChange).GetCChange(result);
 }
@@ -1011,7 +1011,7 @@ void CPPFight_MaximumChangeCount (const CFIGHT_Change* availableChange, CFIGHT_C
 // implements callbacks for C players
 //
 namespace CPPFight{
-	class CPlayer : public Player 
+	class CPlayer : public Player
 	{
 		public:
 			CPlayer( const char * title, const char * author, const CPPFight_CPlayerCfg& cfg )
@@ -1020,9 +1020,9 @@ namespace CPPFight{
 			{	}
 
 			// the main hoo-har, examine the game, and return your move...
-			virtual Move GetMove( const Game& theGame ){				
-				return Move( 
-					myCPlayer_cfg.pGetMove( (CPPFight_Player)this, (CPPFight_Game)&theGame ) 
+			virtual Move GetMove( const Game& theGame ){
+				return Move(
+					myCPlayer_cfg.pGetMove( (CPPFight_Player)this, (CPPFight_Game)&theGame )
 				);
 			}
 
@@ -1047,19 +1047,19 @@ namespace CPPFight{
 			void* GetCustomData()const{
 				return myCPlayer_cfg.pCustomData;
 			}
-			
+
 			~CPlayer(){
 				if (myCPlayer_cfg.pFreeCustomData)
 					myCPlayer_cfg.pFreeCustomData(GetCustomData());
 			}
-			
+
 		private:
 			CPPFight_CPlayerCfg myCPlayer_cfg;
 	};
 }//namespace CPPFight
 
 void CPPFight_New_Player(const char * title, const char * author, CPPFight_CPlayerCfg cfg){
-	
+
 	//uses a simple hidden singleton for memory management
 	static class CPlayerManager{
 		public:
@@ -1103,7 +1103,7 @@ int CPPFight_GameState_GetPlayerCount(CPPFight_GameState the){
 int CPPFight_GameState_GetCurrentPlayer(CPPFight_GameState the){
 	return static_cast<const CPPFight::GameState*>(the)->GetCurrentPlayer();
 }
-		
+
 // for iterating over players
 int CPPFight_GameState_GetNextPlayer(CPPFight_GameState the, int currentPlayerIndex){
 	return static_cast<const CPPFight::GameState*>(the)->GetNextPlayer(currentPlayerIndex);
@@ -1118,7 +1118,7 @@ int CPPFight_GameState_GetActivePlayers(CPPFight_GameState the){
 	return static_cast<const CPPFight::GameState*>(the)->GetActivePlayers();
 }
 
-// 1 if a player (by index) has any change left, 0 otherwise 
+// 1 if a player (by index) has any change left, 0 otherwise
 int CPPFight_GameState_IsPlayerActive(CPPFight_GameState the, int player ){
 	return static_cast<const CPPFight::GameState*>(the)->IsPlayerActive(player)?1:0;
 }
@@ -1127,7 +1127,7 @@ int CPPFight_GameState_IsPlayerActive(CPPFight_GameState the, int player ){
 void CPPFight_GameState_GetPlayerChange(CPPFight_GameState the, int player, CFIGHT_Change* result ){
 	static_cast<const CPPFight::GameState*>(the)->GetPlayerChange(player).GetCChange(result);
 }
-		
+
 // change pool currently available in the game (on the table)
 void CPPFight_GameState_GetGameChange(CPPFight_GameState the, CFIGHT_Change* result ){
 	static_cast<const CPPFight::GameState*>(the)->GetGameChange().GetCChange(result);
@@ -1173,19 +1173,19 @@ void Split(const std::string& in, char c, std::vector<std::string>* pOut)
 		pOut->push_back(std::string(i,j));
 		if (j!=in.end()) ++j;
 		i=j;
-	}	
+	}
 }
 
 void AddCLPlayer(
-	const std::string& commandline, 
-	const std::string& ai_name, 
+	const std::string& commandline,
+	const std::string& ai_name,
 	const std::string& author)
 {
 	if (commandline.empty()==false)
 	{
 		std::vector<std::string> args;
 		Split(commandline, ' ', &args );
-	
+
 		// self registers instance, permanently available
 		// (doesn't 'leak', cleaned up by OS on app exit!)
 		new POpenPlayer(args, ai_name, author);
@@ -1196,7 +1196,7 @@ int ParseCLInt(const char* str, int lower, int upper, const char* docstr)
 {
 	int result=atoi(str);
 	if (result<lower || result>upper) {
-		fprintf(stderr,"Illegal %s: %s (%i)\n", 
+		fprintf(stderr,"Illegal %s: %s (%i)\n",
 			docstr,
 			str,
 			result);
@@ -1205,10 +1205,177 @@ int ParseCLInt(const char* str, int lower, int upper, const char* docstr)
 	return result;
 }
 
+class CommandLineSwitch
+{
+	public:
+		CommandLineSwitch(std::string descr)
+			: mDescription (descr)
+		{
+		}
+		virtual ~CommandLineSwitch() {};
+		virtual bool Consume(const std::string& command)=0;
+		const std::string& Description() const { return mDescription; }
+	private:
+		std::string mDescription;
+};
+
+class MoveCommandLine : public CommandLineSwitch
+{
+	public:
+		MoveCommandLine(std::vector<std::string>* pMoves, const std::string& descr)
+			: CommandLineSwitch(descr)
+			, m_pMoves(pMoves)
+		{
+		}
+		bool Consume(const std::string& command)
+		{
+			m_pMoves->push_back(command);
+			return true;
+		}
+	private:
+		std::vector<std::string>* m_pMoves;
+};
+
+class SetGlobalOption : public CommandLineSwitch
+{
+	public:
+		SetGlobalOption(std::string* pOption, const std::string& descr)
+			: CommandLineSwitch(descr)
+			, m_pOption(pOption)
+		{
+		}
+		bool Consume(const std::string& command)
+		{
+			*m_pOption = command;
+			return true;
+		}
+	private:
+		std::string* m_pOption;
+};
+
+class SetGlobalInt : public CommandLineSwitch
+{
+	public:
+		SetGlobalInt(int* pOption, int lower, int upper, const std::string& descr, const std::string& short_descr)
+			: CommandLineSwitch(descr)
+			, m_pOption(pOption)
+			, m_Lower(lower), m_Upper(upper)
+			, m_ShortStr(short_descr)
+		{
+		}
+		bool Consume(const std::string& command)
+		{
+			*m_pOption = ParseCLInt(command.c_str(), m_Lower, m_Upper, m_ShortStr.c_str());
+			return true;
+		}
+	private:
+		int* m_pOption;
+		int m_Lower, m_Upper;
+		std::string m_ShortStr;
+};
+
+class EnableGlobalSwitch : public CommandLineSwitch
+{
+	public:
+		EnableGlobalSwitch(bool* pOption, const std::string& descr)
+			: CommandLineSwitch(descr)
+			, m_pOption(pOption)
+		{
+		}
+		bool Consume(const std::string& command)
+		{
+			*m_pOption = true;
+			// command is not consumed
+			return false;
+		}
+	private:
+		bool* m_pOption;
+};
+
+class ExcludeBotCommandLine : public CommandLineSwitch
+{
+	public:
+		ExcludeBotCommandLine(const std::string& descr)
+		: CommandLineSwitch(descr)
+		{
+		}
+		bool Consume(const std::string& command)
+		{
+			CPPFight::PlayerRegister::Instance().Exclude(command);
+			return true;
+		}
+};
+
+class ShowHelpCommandLine : public CommandLineSwitch
+{
+	public:
+		ShowHelpCommandLine(const std::map<char,CommandLineSwitch*>* commandMap)
+			: CommandLineSwitch("Help. Outputs this text, and exits immediately.")
+			, m_commandMap(commandMap)
+		{
+		}
+		bool Consume(const std::string& command)
+		{
+			printf("fight - coinfight-framework\nhttps://github.com/codemonkey-uk/coinfight-framework/\noptions:\n");
+			printf(" -n\tadd a New bot. Name and author are optional. Can be used multiple times."
+				"\n\t-n\"COMMAND\" \"NAME\" \"AUTHOR\". For example:"
+				"\n\t-n \"node bots/ai.js\" \"JSBot\" \"codemonkey_uk\"\n"
+			);
+			for (std::map<char,CommandLineSwitch*>::const_iterator i=m_commandMap->begin(); i!=m_commandMap->end(); ++i)
+			{
+				printf(" -%c\t%s\n", i->first, i->second->Description().c_str());
+			}
+
+			exit(-1);
+
+			// command is not consumed
+			return false;
+		}
+
+	private:
+		const std::map<char,CommandLineSwitch*>* m_commandMap;
+};
+
 void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
-{	
+{
 	std::string command, ai_name, author;
-	for (int i=0;i<argc;++i)
+
+	std::map<char,CommandLineSwitch*> commandMap;
+	commandMap['m'] = new MoveCommandLine(
+	    pMoves,
+	    "Moves mode: read a game state and output the move selected."
+	    "\n\tIf moves mode is not used, a tournament will be executed.");
+	commandMap['t'] = new SetGlobalOption(
+		&gTspec,
+		"Tournament type; r = Round Robin and/or e = Elimination"
+	);
+	commandMap['o'] = new SetGlobalOption(
+		&gOspec,
+		"Tournament output format;"
+		"\n\t-ot is plain-text formatted for human reading (default),"
+		"\n\t-oj switches to json formatted results output."
+	);
+	commandMap['x'] = new ExcludeBotCommandLine(
+		"Exclude a bot. Useful for suppressing the built in AIs.\n\tExact matches against both bot name and author."
+	);
+	commandMap['v'] = new EnableGlobalSwitch(
+		&gVerbose,
+		"Enable Verbose output");
+	commandMap['f'] = new EnableGlobalSwitch(
+		&gStopOnError,
+		"Enable Fatal errors.\n\tEnds the tournament immediately if an error is encountered.\n\tUse in combination with -v to debug problems with your bot.");
+	commandMap['g'] = new SetGlobalInt(
+		&gGamesPerMatch,1,65536,
+		"Sets game-per-match. Defaults to 3.\n\tHigher numbers give learning bots a chance to adapt.",
+		"games per match");
+	commandMap['s'] = new SetGlobalInt
+		(&gSecondsPerGame,1,60*60,
+		"Sets seconds-per-game. Defaults to 30."
+		"\n\tAIs that go over this time limit lose that game.",
+		"seconds per game");
+	commandMap['h'] = new ShowHelpCommandLine(&commandMap);
+
+	for (int i=1;i<argc;++i)
 	{
 		if (*argv[i]=='-')
 		{
@@ -1219,11 +1386,11 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 				ai_name="";
 				author="";
 			}
-			
+
 			// add New (externally implemented) bot
 			int ii=i;
 			char mode = *(argv[i]+1);
-			if (mode) 
+			if (mode)
 			{
 				if (*(argv[i]+2)!=0) {
 					command = (argv[i]+2);
@@ -1234,54 +1401,25 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 					if (i!=argc & argv[i]!=0) command = argv[i];
 				}
 			}
-			
+
 			// N = New AI (continued)
-			switch (mode){
-				// Moves mode: read a game state and out put the move selected 
-				// by the requested bot
-				case 'm':
-					pMoves->push_back(command);
-					command="";
-					break;
-				case 't':
-					gTspec=command;
-					command="";
-					break;
-				case 'o':
-					gOspec=command;
-					command="";
-					break;
-				// add a New bot
+			switch (mode)
+			{
+				// add a New bot, special case
 				case 'n':
 					break;
-				// eXclude a bot
-				case 'x':
-					CPPFight::PlayerRegister::Instance().Exclude(command);
-					command="";
-					break;
-				// be Verbose
-				case 'v':
-					gVerbose=true;
-					command="";
-					i=ii;
-					break;
-				case 'f':
-					gStopOnError=true;
-					command="";
-					i=ii;
-					break;
-				// set Games per match (1v1)
-				case 'g':
-					gGamesPerMatch=ParseCLInt(command.c_str(),1,65536,"games per match");
-					command="";
-					break;
-				case 's':
-					gSecondsPerGame=ParseCLInt(command.c_str(),1,60*60,"seconds per game");
-					command="";
-					break;
 				default:
-					fprintf(stderr,"Unrecognised command %s\n", argv[ii]);
-					exit(-1);
+					if (commandMap[mode])
+					{
+						if (commandMap[mode]->Consume(command)==false)
+							i=ii;
+						command = "";
+					}
+					else
+					{
+						fprintf(stderr,"Unrecognised command %s\n", argv[ii]);
+    					exit(-1);
+    				}
 			}
 		}
 		else if (!command.empty() && ai_name.empty())
@@ -1295,6 +1433,8 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 		else if (command.empty())
 		{
 			// unexpected
+			fprintf(stderr,"Unexpected error processing command line arguments.\n");
+			exit(-1);
 		}
 	}
 
@@ -1324,7 +1464,7 @@ class TournamentResultsFormatter
 		virtual void BeginRound(const CPPFight::PlayerList& r, int matches) = 0;
 		virtual void AddMatchResult(
 			const CPPFight::PlayerList& match,
-			const std::vector<int>& games 
+			const std::vector<int>& games
 		)=0;
 		virtual void EndRound() = 0;
 		virtual void EndTournament()=0;
@@ -1366,7 +1506,7 @@ class JsonResultsFormatter : public TournamentResultsFormatter
 		}
 		virtual void AddMatchResult(
 			const CPPFight::PlayerList& match,
-			const std::vector<int>& games 
+			const std::vector<int>& games
 		)
 		{
 			if (m_match>0) printf(",");
@@ -1402,20 +1542,20 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 			fi=0;
 			fj=0;
 		}
-		
-		virtual void BeginTournament(const CPPFight::PlayerList& _tournament) 
+
+		virtual void BeginTournament(const CPPFight::PlayerList& _tournament)
 		{
 			tournament = _tournament;
 			xTable.resize( tournament.size() );
-			
+
 			printf(" Key:\n");
 			for(int i=0;i<tournament.size();++i){
-			
+
 				xTable[i].resize( tournament.size() );
 				for(int j=0;j<tournament.size();++j)
 					xTable[i][j]=-1;
-				
-				printf("  %2i)\t%s by %s\n", 
+
+				printf("  %2i)\t%s by %s\n",
 					tournament[i]->GetUID(),
 					tournament[i]->GetTitle().c_str(),
 					tournament[i]->GetAuthor().c_str());
@@ -1426,27 +1566,27 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 			for(k=tournament.begin();k!=tournament.end();++k){
 				printf("%2i\t", (*k)->GetUID() );
 			}
-			printf("\n\t");	
+			printf("\n\t");
 			for(k=tournament.begin();k!=tournament.end();++k){
 				printf("--\t" );
 			}
 			printf("\n");
 		}
-		
+
 		virtual void AddMatchResult(
 			const CPPFight::PlayerList& match,
-			const std::vector<int>& games 
+			const std::vector<int>& games
 		)
 		{
 			assert( games.size()==2 );
-			
+
 			const int i0=IndexOf(match[0]->GetUID());
 			const int i1=IndexOf(match[1]->GetUID());
 			FlushXTable(i0,i1,games[0]);
-			
+
 			rr_points_scores[ match[0]->GetUID() ] += games[0];
 			rr_points_scores[ match[1]->GetUID() ] += games[1];
-						
+
 			//transfer match score to win/lose/draw score
 			if (games[0] > games[1]){
 				rr_wld_scores[match[0]->GetUID()]++;
@@ -1455,17 +1595,17 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 				rr_wld_scores[match[1]->GetUID()]++;
 			}
 		}
-		
+
 		virtual void EndTournament()
 		{
 			//sort the player list on points score
 			CPPFight::PlayerList tournament_sorted(tournament);
 			std::sort( tournament_sorted.begin(), tournament_sorted.end(), CompScores(rr_points_scores) );
-	
+
 			printf(" Totals:\n  Games:\n");
 
 			for(int i=0;i<tournament_sorted.size();++i){
-				printf("%6i - %s by %s\n", 
+				printf("%6i - %s by %s\n",
 					rr_points_scores[ tournament_sorted[i]->GetUID() ],
 					tournament_sorted[i]->GetTitle().c_str(),
 					tournament_sorted[i]->GetAuthor().c_str());
@@ -1476,7 +1616,7 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 			printf("  Matches:\n");
 
 			for(int i=0;i<tournament_sorted.size();++i){
-				printf("%6i - %s by %s\n", 
+				printf("%6i - %s by %s\n",
 					rr_wld_scores[ tournament_sorted[i]->GetUID() ],
 					tournament_sorted[i]->GetTitle().c_str(),
 					tournament_sorted[i]->GetAuthor().c_str());
@@ -1486,30 +1626,30 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 		//unused in this round-robin formatter
 		virtual void BeginRound(const CPPFight::PlayerList& r, int matches){}
 		virtual void EndRound(){}
-		
+
 	private:
 		CPPFight::PlayerList tournament;
 		std::vector< std::vector<int> > xTable;
 		std::map< int, int > rr_points_scores;	//total games won count
 		std::map< int, int > rr_wld_scores;		//matches (N games) won/lost/draw
-		
+
 		int IndexOf( int id ) {
 			for (int i=0;i!=tournament.size();++i)
 				if (tournament[i]->GetUID()==id) return i;
 			return -1;
 		}
-		
+
 		int fi,fj;
 		void FlushXTable(int i,int j,int s)
 		{
 			xTable[i][j] = s;
-			
+
 			while(xTable[fi][fj]!=-1 || fi==fj)
 			{
 				if (fj==0) printf("  %2i)\t", tournament[fi]->GetUID() );
 				if (fi==fj) printf( "--\t" );
 				else printf("%3i\t", xTable[fi][fj] );
-				
+
 				fj++;
 				if (fj>=tournament.size())
 				{
@@ -1526,12 +1666,12 @@ class PrintfRoundRobinResultsFormatter : public TournamentResultsFormatter
 class PrintfEliminationFormatter : public TournamentResultsFormatter
 {
 	public:
-		virtual void BeginTournament(const CPPFight::PlayerList& t) 
+		virtual void BeginTournament(const CPPFight::PlayerList& t)
 		{
 			printf("\nMulitiplayer Elimination Tournament\n");
 			round=1;
 		}
-		virtual void BeginRound(const CPPFight::PlayerList& r, int matches) 
+		virtual void BeginRound(const CPPFight::PlayerList& r, int matches)
 		{
 			printf(" Round %i - %i players, %i groups\n",
 				round,
@@ -1541,28 +1681,28 @@ class PrintfEliminationFormatter : public TournamentResultsFormatter
 		}
 		virtual void AddMatchResult(
 			const CPPFight::PlayerList& match,
-			const std::vector<int>& games 
+			const std::vector<int>& games
 		)
 		{
-			printf("  Group %i, %i players.  Scores:\n", 
-				group, 
+			printf("  Group %i, %i players.  Scores:\n",
+				group,
 				static_cast<int>(match.size()) );
 
 			for(unsigned int i=0;i<match.size();++i){
-				printf("    %i - %s by %s\n", 
+				printf("    %i - %s by %s\n",
 					games[ i ],
 					match[i]->GetTitle().c_str(),
 					match[i]->GetAuthor().c_str());
 			}
-			
-			group++;		
+
+			group++;
 		}
 		virtual void EndRound()
 		{
 			round++;
 		}
 		virtual void EndTournament(){}
-		
+
 	private:
 		int round;
 		int group;
@@ -1571,14 +1711,14 @@ class PrintfEliminationFormatter : public TournamentResultsFormatter
 int RoundRobin(const CPPFight::PlayerList& tournament, TournamentResultsFormatter* pOut)
 {
 	int errors = 0;
-	
+
 	//Round robin
 	pOut->BeginTournament(tournament);
-	
+
 	// all in 1 big round -- though i guess this could be split into 2 rounds
 	// All the AvsB then all the BvsA, or something like that, not sure theres any point
 	pOut->BeginRound(tournament, (tournament.size()-1)*tournament.size());
-	
+
 	for(CPPFight::PlayerList::const_iterator j=tournament.begin();j!=tournament.end();++j){
 		for(CPPFight::PlayerList::const_iterator k=tournament.begin();k!=tournament.end();++k){
 			if (j!=k){
@@ -1610,23 +1750,23 @@ int RoundRobin(const CPPFight::PlayerList& tournament, TournamentResultsFormatte
 
 	pOut->EndRound();
 	pOut->EndTournament();
-	
+
 	return errors;
 }
 
 int Elimination(const CPPFight::PlayerList& tournament_, TournamentResultsFormatter* pOut)
 {
 	int errors = 0;
-	
+
 	// working copy
 	CPPFight::PlayerList tournament = tournament_;
-	
+
 	pOut->BeginTournament(tournament);
 
 	while(tournament.size()>1){
 		std::map< int, int > score_map;
 		std::vector< CPPFight::PlayerList > groups(tournament.size()/6+1);
-		
+
 		pOut->BeginRound(tournament, groups.size());
 
 		for(unsigned int i=0;i!=tournament.size();++i){
@@ -1636,7 +1776,7 @@ int Elimination(const CPPFight::PlayerList& tournament_, TournamentResultsFormat
 		CPPFight::PlayerList winners;
 
 		for(unsigned int g = 0;g!=groups.size();++g){
-		
+
 			CPPFight::PlayerList playerList(groups[g]);
 			std::sort( playerList.begin(), playerList.end() );
 			do{
@@ -1656,34 +1796,34 @@ int Elimination(const CPPFight::PlayerList& tournament_, TournamentResultsFormat
 				scores[i] = score_map[ groups[g][i]->GetUID() ];
 
 			pOut->AddMatchResult(groups[g], scores);
-		
+
 			// players going to next round -> top half of table
 			CPPFight::PlayerList::iterator begin = groups[g].begin();
 			CPPFight::PlayerList::iterator end = begin+(groups[g].size()+1)/2;
-		
+
 			// let extra contestants into next round in case of ties in table center
 			while( end!=groups[g].end() && scores[(*(end-1))->GetUID()]==scores[(*end)->GetUID()] ){
 				++end;
 			}
 
-			// where including ties means all players pass to next round, and it's already 
+			// where including ties means all players pass to next round, and it's already
 			// down to one group, exclude ties from winners circle
-			if ( end==groups[g].end() && groups.size()==1){               
+			if ( end==groups[g].end() && groups.size()==1){
 				do{
 					--end;
-				}while( std::distance(groups[g].begin(),end)>0 && 
+				}while( std::distance(groups[g].begin(),end)>0 &&
 				        scores[(*(end-1))->GetUID()]==scores[(*end)->GetUID()] );
 			}
-		
+
 			winners.insert(winners.end(), begin, end);
 		}
 
 		tournament = winners;
 		pOut->EndRound();
 	}
-	
+
 	pOut->EndTournament();
-	
+
 	return errors;
 }
 
@@ -1693,25 +1833,25 @@ int main(int argc, char* argv[])
 
 	std::vector<std::string> moves;
 	AddCLPlayers(argc, argv, &moves);
-	
+
 	if (!moves.empty()) {
-		
-		CPPFight::PlayerList players = 
+
+		CPPFight::PlayerList players =
 			CPPFight::PlayerRegister::Instance().GetPlayerList();
-	
+
 		int i;
 		for (i=0;i!=players.size();++i){
 			if (players[i]->GetTitle()==moves[0]){
-				if (gVerbose) 
+				if (gVerbose)
 				{
-					fprintf(stderr,"AI Selected: %s by %s\n", 
+					fprintf(stderr,"AI Selected: %s by %s\n",
 						players[i]->GetTitle().c_str(),
 						players[i]->GetAuthor().c_str());
 				}
 				break;
 			}
 		}
-		
+
 		if (i==players.size())
 		{
 			fprintf(stderr,"'%s' NOT FOUND\n", moves[0].c_str());
@@ -1722,10 +1862,10 @@ int main(int argc, char* argv[])
 			{
 				try{
 					CPPFight::Move move = players[i]->GetMove(*pGame);
-					CPPFight::Serialise(stdout, move);			
+					CPPFight::Serialise(stdout, move);
 				}
 				catch(...){
-					fprintf(stderr,"%s threw an exception, ending\n", 
+					fprintf(stderr,"%s threw an exception, ending\n",
 						players[i]->GetTitle().c_str());
 					return -1;
 				}
@@ -1737,9 +1877,9 @@ int main(int argc, char* argv[])
 		}
 		return 0;
 	}
-	
+
 	unsigned int errors = 0;
-	
+
 	tms t;
 	clock_t begin = times(&t);
 
@@ -1750,14 +1890,14 @@ int main(int argc, char* argv[])
 	PrintfEliminationFormatter pfErf;
 	PrintfRoundRobinResultsFormatter pfRRrf;
 	JsonResultsFormatter jRF;
-	
+
 	TournamentResultsFormatter *pRRRF=0, *pERF=0;
-	if (gOspec[0]=='t') 
+	if (gOspec[0]=='t')
 	{
 		pRRRF=&pfRRrf;
 		pERF=&pfErf;
 	}
-	else if (gOspec[0]=='j') 
+	else if (gOspec[0]=='j')
 	{
 		pRRRF=&jRF;
 		pERF=&jRF;
@@ -1784,18 +1924,18 @@ int main(int argc, char* argv[])
 			}
 			default:
 				fprintf( stderr,
-					"Unrecognised tournament type %c in %s\n", 
+					"Unrecognised tournament type %c in %s\n",
 					*i, gTspec.c_str()
 				);
 				break;
 		}
 	}
-		
+
 	if (gVerbose)
 	{
-		printf("Played %i games in %f seconds.  (%i game errors)\n", 
-			CPPFight::games_played, 
-			(float)(times(&t)-begin)/ticks_per_s, 
+		printf("Played %i games in %f seconds.  (%i game errors)\n",
+			CPPFight::games_played,
+			(float)(times(&t)-begin)/ticks_per_s,
 			errors);
 	}
 	return 0;
