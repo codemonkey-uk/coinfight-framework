@@ -12,6 +12,8 @@
 // TODO:
 //
 //  Output HTML/Other formats
+//  Other coin sets
+//  Multi-core tournament execution
 //
 
 //disable MSVC++ long symbols warning
@@ -1213,7 +1215,7 @@ class CommandLineSwitch
 		{
 		}
 		virtual ~CommandLineSwitch() {};
-		virtual bool Consume(const std::string& command)=0;
+		virtual bool Consume(const std::vector<std::string>& arguments)=0;
 		const std::string& Description() const { return mDescription; }
 	private:
 		std::string mDescription;
@@ -1227,11 +1229,16 @@ class MoveCommandLine : public CommandLineSwitch
 			, m_pMoves(pMoves)
 		{
 		}
-		bool Consume(const std::string& command)
+		bool Consume(const std::vector<std::string>& arguments)
 		{
-			m_pMoves->push_back(command);
+			for (std::vector<std::string>::const_iterator i = arguments.begin();
+				i != arguments.end(); ++i)
+			{
+				m_pMoves->push_back(*i);
+			}
 			return true;
 		}
+
 	private:
 		std::vector<std::string>* m_pMoves;
 };
@@ -1244,9 +1251,10 @@ class SetGlobalOption : public CommandLineSwitch
 			, m_pOption(pOption)
 		{
 		}
-		bool Consume(const std::string& command)
+		bool Consume(const std::vector<std::string>& arguments)
 		{
-			*m_pOption = command;
+			// TODO: check arguments.size == 1
+			*m_pOption = arguments.front();
 			return true;
 		}
 	private:
@@ -1263,9 +1271,10 @@ class SetGlobalInt : public CommandLineSwitch
 			, m_ShortStr(short_descr)
 		{
 		}
-		bool Consume(const std::string& command)
+		bool Consume(const std::vector<std::string>& arguments)
 		{
-			*m_pOption = ParseCLInt(command.c_str(), m_Lower, m_Upper, m_ShortStr.c_str());
+			// TODO: check arguments.size == 1
+			*m_pOption = ParseCLInt(arguments.front().c_str(), m_Lower, m_Upper, m_ShortStr.c_str());
 			return true;
 		}
 	private:
@@ -1282,10 +1291,10 @@ class EnableGlobalSwitch : public CommandLineSwitch
 			, m_pOption(pOption)
 		{
 		}
-		bool Consume(const std::string& command)
+		bool Consume(const std::vector<std::string>& arguments)
 		{
+			// TODO: check arguments.size == 0
 			*m_pOption = true;
-			// command is not consumed
 			return false;
 		}
 	private:
@@ -1299,9 +1308,49 @@ class ExcludeBotCommandLine : public CommandLineSwitch
 		: CommandLineSwitch(descr)
 		{
 		}
-		bool Consume(const std::string& command)
+		bool Consume(const std::vector<std::string>& arguments)
 		{
-			CPPFight::PlayerRegister::Instance().Exclude(command);
+			for (std::vector<std::string>::const_iterator i = arguments.begin();
+				i != arguments.end(); ++i)
+			{
+				CPPFight::PlayerRegister::Instance().Exclude(*i);
+			}
+			return true;
+		}
+};
+
+class AddBotCommandLine : public CommandLineSwitch
+{
+	public:
+		AddBotCommandLine(const std::string& descr)
+		: CommandLineSwitch(descr)
+		{
+		}
+		bool Consume(const std::vector<std::string>& arguments)
+		{
+			if (arguments.size()<1 || arguments.size()>3)
+			{
+				fprintf(stderr, "Error. Expected:\n");
+				fprintf(stderr, "\t-n\"COMMAND\" \"NAME\" \"AUTHOR\"\n");
+				fprintf(stderr, "Found %i arguments following -n:\n\t", (int)arguments.size());
+				for (std::vector<std::string>::const_iterator i = arguments.begin();
+					i != arguments.end(); ++i)
+				{
+					fprintf(stderr, "'%s' ", i->c_str());
+				}
+				fprintf(stderr, "\n");
+				exit(-1);
+			}
+
+			std::string command=arguments[0];
+			std::string ai_name;
+			if (arguments.size()>1)
+				ai_name = arguments[1];
+			std::string author;
+			if (arguments.size()>2)
+				author = arguments[2];
+
+			AddCLPlayer( command, ai_name, author );
 			return true;
 		}
 };
@@ -1314,13 +1363,9 @@ class ShowHelpCommandLine : public CommandLineSwitch
 			, m_commandMap(commandMap)
 		{
 		}
-		bool Consume(const std::string& command)
+		bool Consume(const std::vector<std::string>& arguments)
 		{
 			printf("fight - coinfight-framework\nhttps://github.com/codemonkey-uk/coinfight-framework/\noptions:\n");
-			printf(" -n\tadd a New bot. Name and author are optional. Can be used multiple times."
-				"\n\t-n\"COMMAND\" \"NAME\" \"AUTHOR\". For example:"
-				"\n\t-n \"node bots/ai.js\" \"JSBot\" \"codemonkey_uk\"\n"
-			);
 			for (std::map<char,CommandLineSwitch*>::const_iterator i=m_commandMap->begin(); i!=m_commandMap->end(); ++i)
 			{
 				printf(" -%c\t%s\n", i->first, i->second->Description().c_str());
@@ -1338,7 +1383,7 @@ class ShowHelpCommandLine : public CommandLineSwitch
 
 void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 {
-	std::string command, ai_name, author;
+	std::vector<std::string> arguments;
 
 	std::map<char,CommandLineSwitch*> commandMap;
 	commandMap['m'] = new MoveCommandLine(
@@ -1375,70 +1420,55 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 		"seconds per game");
 	commandMap['h'] = new ShowHelpCommandLine(&commandMap);
 
+	commandMap['n'] = new AddBotCommandLine(
+		"add a New bot. Name and author are optional. Can be used multiple times."
+		"\n\t-n\"COMMAND\" \"NAME\" \"AUTHOR\". For example:"
+		"\n\t-n \"node bots/ai.js\" \"JSBot\" \"codemonkey_uk\"\n"
+	);
+
+	CommandLineSwitch* command = 0;
 	for (int i=1;i<argc;++i)
 	{
 		if (*argv[i]=='-')
 		{
-			if (!command.empty())
+			if (command)
 			{
-				AddCLPlayer( command, ai_name, author );
-				command="";
-				ai_name="";
-				author="";
+				command->Consume(arguments);
+				command = 0;
+				arguments.resize(0);
 			}
 
-			// add New (externally implemented) bot
-			int ii=i;
 			char mode = *(argv[i]+1);
 			if (mode)
 			{
 				if (*(argv[i]+2)!=0) {
-					command = (argv[i]+2);
-				}
-				else
-				{
-					++i;
-					if (i!=argc & argv[i]!=0) command = argv[i];
+					arguments.push_back( std::string(argv[i]+2) );
 				}
 			}
-
-			// N = New AI (continued)
-			switch (mode)
+			command = commandMap[mode];
+			if (!command)
 			{
-				// add a New bot, special case
-				case 'n':
-					break;
-				default:
-					if (commandMap[mode])
-					{
-						if (commandMap[mode]->Consume(command)==false)
-							i=ii;
-						command = "";
-					}
-					else
-					{
-						fprintf(stderr,"Unrecognised command %s\n", argv[ii]);
-    					exit(-1);
-    				}
+				fprintf(stderr,"Unrecognised command '%c'\n", mode);
+				exit(-1);
 			}
 		}
-		else if (!command.empty() && ai_name.empty())
+		else if (command)
 		{
-			ai_name = argv[i];
+			arguments.push_back( argv[i] );
 		}
-		else if (!command.empty() && !ai_name.empty() && author.empty())
-		{
-			author = argv[i];
-		}
-		else if (command.empty())
+		else
 		{
 			// unexpected
-			fprintf(stderr,"Unexpected error processing command line arguments.\n");
+			fprintf(stderr,"Unexpected error processing command line argument %s: ", argv[i] );
 			exit(-1);
 		}
 	}
 
-	AddCLPlayer(command, ai_name, author);
+	if (command)
+		command->Consume(arguments);
+
+	for (std::map<char,CommandLineSwitch*>::const_iterator i=commandMap.begin(); i!=commandMap.end(); ++i)
+		delete i->second;
 }
 
 // comparison functor for sorting players based on score
