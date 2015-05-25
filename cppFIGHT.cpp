@@ -1215,10 +1215,21 @@ class CommandLineSwitch
 		{
 		}
 		virtual ~CommandLineSwitch() {};
-		virtual bool Consume(const std::vector<std::string>& arguments)=0;
+		virtual void Consume(const std::vector<std::string>& arguments)=0;
 		const std::string& Description() const { return mDescription; }
 	private:
 		std::string mDescription;
+	protected:
+		void PrintDiagnostic(const std::vector<std::string>& arguments)
+		{
+			fprintf(stderr, "Found %i arguments:\n\t", (int)arguments.size());
+			for (std::vector<std::string>::const_iterator i = arguments.begin();
+				i != arguments.end(); ++i)
+			{
+				fprintf(stderr, "'%s' ", i->c_str());
+			}
+			fprintf(stderr, "\n");
+		}
 };
 
 class MoveCommandLine : public CommandLineSwitch
@@ -1229,14 +1240,13 @@ class MoveCommandLine : public CommandLineSwitch
 			, m_pMoves(pMoves)
 		{
 		}
-		bool Consume(const std::vector<std::string>& arguments)
+		void Consume(const std::vector<std::string>& arguments)
 		{
 			for (std::vector<std::string>::const_iterator i = arguments.begin();
 				i != arguments.end(); ++i)
 			{
 				m_pMoves->push_back(*i);
 			}
-			return true;
 		}
 
 	private:
@@ -1251,11 +1261,16 @@ class SetGlobalOption : public CommandLineSwitch
 			, m_pOption(pOption)
 		{
 		}
-		bool Consume(const std::vector<std::string>& arguments)
+		void Consume(const std::vector<std::string>& arguments)
 		{
-			// TODO: check arguments.size == 1
+			if (arguments.size()!=1)
+			{
+				fprintf(stderr, "Error. Expected exactly 1 argument.\n");
+				PrintDiagnostic(arguments);
+				exit(-1);
+			}
+
 			*m_pOption = arguments.front();
-			return true;
 		}
 	private:
 		std::string* m_pOption;
@@ -1271,11 +1286,16 @@ class SetGlobalInt : public CommandLineSwitch
 			, m_ShortStr(short_descr)
 		{
 		}
-		bool Consume(const std::vector<std::string>& arguments)
+		void Consume(const std::vector<std::string>& arguments)
 		{
-			// TODO: check arguments.size == 1
+			if (arguments.size()!=1)
+			{
+				fprintf(stderr, "Error. Expected exactly 1 argument.\n");
+				PrintDiagnostic(arguments);
+				exit(-1);
+			}
+
 			*m_pOption = ParseCLInt(arguments.front().c_str(), m_Lower, m_Upper, m_ShortStr.c_str());
-			return true;
 		}
 	private:
 		int* m_pOption;
@@ -1291,11 +1311,16 @@ class EnableGlobalSwitch : public CommandLineSwitch
 			, m_pOption(pOption)
 		{
 		}
-		bool Consume(const std::vector<std::string>& arguments)
+		void Consume(const std::vector<std::string>& arguments)
 		{
-			// TODO: check arguments.size == 0
+			if (arguments.empty()==false)
+			{
+				fprintf(stderr, "Error. Expected 0 arguments.\n");
+				PrintDiagnostic(arguments);
+				exit(-1);
+			}
+
 			*m_pOption = true;
-			return false;
 		}
 	private:
 		bool* m_pOption;
@@ -1308,14 +1333,13 @@ class ExcludeBotCommandLine : public CommandLineSwitch
 		: CommandLineSwitch(descr)
 		{
 		}
-		bool Consume(const std::vector<std::string>& arguments)
+		void Consume(const std::vector<std::string>& arguments)
 		{
 			for (std::vector<std::string>::const_iterator i = arguments.begin();
 				i != arguments.end(); ++i)
 			{
 				CPPFight::PlayerRegister::Instance().Exclude(*i);
 			}
-			return true;
 		}
 };
 
@@ -1326,19 +1350,13 @@ class AddBotCommandLine : public CommandLineSwitch
 		: CommandLineSwitch(descr)
 		{
 		}
-		bool Consume(const std::vector<std::string>& arguments)
+		void Consume(const std::vector<std::string>& arguments)
 		{
 			if (arguments.size()<1 || arguments.size()>3)
 			{
 				fprintf(stderr, "Error. Expected:\n");
 				fprintf(stderr, "\t-n\"COMMAND\" \"NAME\" \"AUTHOR\"\n");
-				fprintf(stderr, "Found %i arguments following -n:\n\t", (int)arguments.size());
-				for (std::vector<std::string>::const_iterator i = arguments.begin();
-					i != arguments.end(); ++i)
-				{
-					fprintf(stderr, "'%s' ", i->c_str());
-				}
-				fprintf(stderr, "\n");
+				PrintDiagnostic(arguments);
 				exit(-1);
 			}
 
@@ -1351,7 +1369,6 @@ class AddBotCommandLine : public CommandLineSwitch
 				author = arguments[2];
 
 			AddCLPlayer( command, ai_name, author );
-			return true;
 		}
 };
 
@@ -1363,7 +1380,7 @@ class ShowHelpCommandLine : public CommandLineSwitch
 			, m_commandMap(commandMap)
 		{
 		}
-		bool Consume(const std::vector<std::string>& arguments)
+		void Consume(const std::vector<std::string>& arguments)
 		{
 			printf("fight - coinfight-framework\nhttps://github.com/codemonkey-uk/coinfight-framework/\noptions:\n");
 			for (std::map<char,CommandLineSwitch*>::const_iterator i=m_commandMap->begin(); i!=m_commandMap->end(); ++i)
@@ -1372,9 +1389,6 @@ class ShowHelpCommandLine : public CommandLineSwitch
 			}
 
 			exit(-1);
-
-			// command is not consumed
-			return false;
 		}
 
 	private:
@@ -1423,7 +1437,7 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 	commandMap['n'] = new AddBotCommandLine(
 		"add a New bot. Name and author are optional. Can be used multiple times."
 		"\n\t-n\"COMMAND\" \"NAME\" \"AUTHOR\". For example:"
-		"\n\t-n \"node bots/ai.js\" \"JSBot\" \"codemonkey_uk\"\n"
+		"\n\t-n \"node bots/ai.js\" \"JSBot\" \"codemonkey_uk\""
 	);
 
 	CommandLineSwitch* command = 0;
