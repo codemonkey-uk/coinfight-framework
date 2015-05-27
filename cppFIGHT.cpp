@@ -61,6 +61,8 @@
 
 #include "pplayer.h"
 
+#include "argumentProcessor.h"
+
 bool gStopOnError = false;
 bool gVerbose = false;
 int gGamesPerMatch=3;
@@ -1194,44 +1196,6 @@ void AddCLPlayer(
 	}
 }
 
-int ParseCLInt(const char* str, int lower, int upper, const char* docstr)
-{
-	int result=atoi(str);
-	if (result<lower || result>upper) {
-		fprintf(stderr,"Illegal %s: %s (%i)\n",
-			docstr,
-			str,
-			result);
-		exit(-1);
-	}
-	return result;
-}
-
-class CommandLineSwitch
-{
-	public:
-		CommandLineSwitch(std::string descr)
-			: mDescription (descr)
-		{
-		}
-		virtual ~CommandLineSwitch() {};
-		virtual void Consume(const std::vector<std::string>& arguments)=0;
-		const std::string& Description() const { return mDescription; }
-	private:
-		std::string mDescription;
-	protected:
-		void PrintDiagnostic(const std::vector<std::string>& arguments)
-		{
-			fprintf(stderr, "Found %i arguments:\n\t", (int)arguments.size());
-			for (std::vector<std::string>::const_iterator i = arguments.begin();
-				i != arguments.end(); ++i)
-			{
-				fprintf(stderr, "'%s' ", i->c_str());
-			}
-			fprintf(stderr, "\n");
-		}
-};
-
 class MoveCommandLine : public CommandLineSwitch
 {
 	public:
@@ -1251,79 +1215,6 @@ class MoveCommandLine : public CommandLineSwitch
 
 	private:
 		std::vector<std::string>* m_pMoves;
-};
-
-class SetGlobalOption : public CommandLineSwitch
-{
-	public:
-		SetGlobalOption(std::string* pOption, const std::string& descr)
-			: CommandLineSwitch(descr)
-			, m_pOption(pOption)
-		{
-		}
-		void Consume(const std::vector<std::string>& arguments)
-		{
-			if (arguments.size()!=1)
-			{
-				fprintf(stderr, "Error. Expected exactly 1 argument.\n");
-				PrintDiagnostic(arguments);
-				exit(-1);
-			}
-
-			*m_pOption = arguments.front();
-		}
-	private:
-		std::string* m_pOption;
-};
-
-class SetGlobalInt : public CommandLineSwitch
-{
-	public:
-		SetGlobalInt(int* pOption, int lower, int upper, const std::string& descr, const std::string& short_descr)
-			: CommandLineSwitch(descr)
-			, m_pOption(pOption)
-			, m_Lower(lower), m_Upper(upper)
-			, m_ShortStr(short_descr)
-		{
-		}
-		void Consume(const std::vector<std::string>& arguments)
-		{
-			if (arguments.size()!=1)
-			{
-				fprintf(stderr, "Error. Expected exactly 1 argument.\n");
-				PrintDiagnostic(arguments);
-				exit(-1);
-			}
-
-			*m_pOption = ParseCLInt(arguments.front().c_str(), m_Lower, m_Upper, m_ShortStr.c_str());
-		}
-	private:
-		int* m_pOption;
-		int m_Lower, m_Upper;
-		std::string m_ShortStr;
-};
-
-class EnableGlobalSwitch : public CommandLineSwitch
-{
-	public:
-		EnableGlobalSwitch(bool* pOption, const std::string& descr)
-			: CommandLineSwitch(descr)
-			, m_pOption(pOption)
-		{
-		}
-		void Consume(const std::vector<std::string>& arguments)
-		{
-			if (arguments.empty()==false)
-			{
-				fprintf(stderr, "Error. Expected 0 arguments.\n");
-				PrintDiagnostic(arguments);
-				exit(-1);
-			}
-
-			*m_pOption = true;
-		}
-	private:
-		bool* m_pOption;
 };
 
 class ExcludeBotCommandLine : public CommandLineSwitch
@@ -1397,8 +1288,6 @@ class ShowHelpCommandLine : public CommandLineSwitch
 
 void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 {
-	std::vector<std::string> arguments;
-
 	std::map<char,CommandLineSwitch*> commandMap;
 	commandMap['m'] = new MoveCommandLine(
 	    pMoves,
@@ -1440,46 +1329,7 @@ void AddCLPlayers(int argc, char* argv[], std::vector<std::string>* pMoves )
 		"\n\t-n \"node bots/ai.js\" \"JSBot\" \"codemonkey_uk\""
 	);
 
-	CommandLineSwitch* command = 0;
-	for (int i=1;i<argc;++i)
-	{
-		if (*argv[i]=='-')
-		{
-			if (command)
-			{
-				command->Consume(arguments);
-				command = 0;
-				arguments.resize(0);
-			}
-
-			char mode = *(argv[i]+1);
-			if (mode)
-			{
-				if (*(argv[i]+2)!=0) {
-					arguments.push_back( std::string(argv[i]+2) );
-				}
-			}
-			command = commandMap[mode];
-			if (!command)
-			{
-				fprintf(stderr,"Unrecognised command '%c'\n", mode);
-				exit(-1);
-			}
-		}
-		else if (command)
-		{
-			arguments.push_back( argv[i] );
-		}
-		else
-		{
-			// unexpected
-			fprintf(stderr,"Unexpected error processing command line argument %s: ", argv[i] );
-			exit(-1);
-		}
-	}
-
-	if (command)
-		command->Consume(arguments);
+	ProcessCommandLineArguments(argc, argv, commandMap);
 
 	for (std::map<char,CommandLineSwitch*>::const_iterator i=commandMap.begin(); i!=commandMap.end(); ++i)
 		delete i->second;
