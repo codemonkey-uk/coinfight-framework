@@ -282,6 +282,9 @@ namespace CPPFight
 			static int theNextUID;
 	};
 
+	//player list type, just pointers
+	typedef std::vector<Player*> PlayerList;
+	
 	//
 	// GameState - stores game state (change on table, change in player hands)
 	// Essentially a const object, modification is not permited,
