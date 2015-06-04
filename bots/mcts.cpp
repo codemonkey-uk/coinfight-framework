@@ -27,18 +27,7 @@ namespace Thad{
 		{
 		}
 
-		//utility struct, for returning both a move, and its heuristic "score"
-		struct MoveScore{
-			MoveScore(Move m, int s) : move(m),score(s) {};
-
-			const Move move;
-			const int score;
-		};
-
-		//Get Best Move - 
-		//recursive min/max algorithm explores game states and 
-		//returns a move and its score, for a specific player
-		MoveScore GetBestMove( const GameState& theGame, const int player_index, int abPrune, const int recursive=1)
+		void GetAllMoves( const GameState& theGame, std::vector<Move>& moveListOut )
 		{
 			const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
 			const Change& pool = theGame.GetGameChange(); 
@@ -52,7 +41,8 @@ namespace Thad{
 				recycledChangeLists.pop_back();
 			}
 
-			std::vector<Move> moveList;
+			// need to tell resize to will with a value even when count is 0
+			moveListOut.resize(0, Move(PENNY));
 			
 			//for each coin that can be played
 			for (const Coin *ci=&COINLIST[0];ci!=&COINLIST[COIN_COUNT];++ci){				
@@ -68,28 +58,58 @@ namespace Thad{
 					const Change::List::reverse_iterator end = someChange->rend();
 					for(Change::List::reverse_iterator i = someChange->rbegin();i!=end;++i){
 				
-						//create "move" from coin to give, and change to take
-						const Move myMove(*ci,*i);
-						
-						moveList.push_back(myMove);
-						
-						//create gamestate once the move has been played
-						// GameState newGame = theGame.PlayMove( myMove );
-
+						//create "move" from coin to give, and change to take				
+						const Move m(*ci,*i);
+						moveListOut.push_back(m);
 					}
 				}
 			}
 
 			recycledChangeLists.push_back( someChange );
+		}
+		
+		Move GetRandomMove( const GameState& theGame )
+		{
+			static std::vector<Move> moveList;
+			
+			GetAllMoves(theGame, moveList);
 			
 			// random move
-			return MoveScore( moveList[rand()%moveList.size()], 1 );
+			return moveList[rand()%moveList.size()];
+		}
+		
+		int PlayOut(GameState theGame)
+		{
+			while (theGame.GetActivePlayers()>1)
+				theGame = theGame.PlayMove( GetRandomMove(theGame) );
+			return theGame.GetCurrentPlayer();
 		}
 
 		//override GetMove function
 		virtual Move GetMove (const Game& theGame)
 		{	
-			return GetBestMove( theGame, theGame.GetCurrentPlayer(), std::numeric_limits<int>::max(), 3 ).move;
+			std::vector<Move> moveList;
+			GetAllMoves(theGame, moveList);
+			std::vector<int> scores;
+			scores.resize( moveList.size(), 0 );
+
+			int best = 0;
+			const int trials  = 512;
+			for (int a=0; a!=trials; ++a)
+			{
+				for (int i=0; i!=moveList.size(); ++i)
+				{
+					GameState newGame = theGame.PlayMove( moveList[i] );
+					if (PlayOut(newGame)==theGame.GetCurrentPlayer())
+					{
+						scores[i]++;
+						if (scores[i] > scores[best])
+							best = i;
+					}
+				}
+			}
+
+			return moveList[best];
 		}
 		
 		//virtual 
