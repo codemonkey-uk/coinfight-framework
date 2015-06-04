@@ -11,6 +11,10 @@
 #include <algorithm>
 #include <cstdlib>
 
+// timing stuff
+#include <sys/times.h>
+#include <unistd.h>
+
 namespace Thad{
 
 	using namespace CPPFight;
@@ -23,7 +27,9 @@ namespace Thad{
 	public:
 
 		//construct base class with AI name and author name
-		MCTSBot() : Player( "MCTS", "Thad" )
+		MCTSBot()
+		 : Player( "MCTS", "Thad" )
+		 , mChangeList( new Change::List )
 		{
 		}
 
@@ -31,15 +37,6 @@ namespace Thad{
 		{
 			const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
 			const Change& pool = theGame.GetGameChange(); 
-
-			Change::List* someChange;
-			if (recycledChangeLists.empty()){
-				someChange = new Change::List;
-			}
-			else{
-				someChange = recycledChangeLists.back();
-				recycledChangeLists.pop_back();
-			}
 
 			// need to tell resize to will with a value even when count is 0
 			moveListOut.resize(0, Move(PENNY));
@@ -52,11 +49,11 @@ namespace Thad{
 					GetAllPossibleChange(
 						pool,
 						*ci, 
-						*someChange);
+						*mChangeList);
 
 					//for each possible set of change
-					const Change::List::reverse_iterator end = someChange->rend();
-					for(Change::List::reverse_iterator i = someChange->rbegin();i!=end;++i){
+					const Change::List::iterator e = mChangeList->end();
+					for(Change::List::iterator i = mChangeList->begin();i!=e;++i){
 				
 						//create "move" from coin to give, and change to take				
 						const Move m(*ci,*i);
@@ -64,8 +61,6 @@ namespace Thad{
 					}
 				}
 			}
-
-			recycledChangeLists.push_back( someChange );
 		}
 		
 		Move GetRandomMove( const GameState& theGame )
@@ -87,15 +82,27 @@ namespace Thad{
 
 		//override GetMove function
 		virtual Move GetMove (const Game& theGame)
-		{	
+		{
+			tms t;
+			clock_t currentTurnClockStart = times(&t);
+			
+			clock_t timeLeft = CFIGHT_PLAYER_TIME_PER_GAME - mTimeTaken;
+
+			// we could get this from the PlayOut, but this is worst (best) case
+			int turnsLeft = theGame.GetPlayerChange( 
+				theGame.GetCurrentPlayer() 
+			).GetTotalValue();
+			
+			clock_t turnTime = timeLeft / turnsLeft;
+			
 			std::vector<Move> moveList;
 			GetAllMoves(theGame, moveList);
 			std::vector<int> scores;
 			scores.resize( moveList.size(), 0 );
 
 			int best = 0;
-			const int trials  = 512;
-			for (int a=0; a!=trials; ++a)
+			int trials = 0;
+			do
 			{
 				for (int i=0; i!=moveList.size(); ++i)
 				{
@@ -107,32 +114,19 @@ namespace Thad{
 							best = i;
 					}
 				}
-			}
-
+				trials++;				
+			}while( times(&t) - currentTurnClockStart < turnTime );
+			mTimeTaken += times(&t) - currentTurnClockStart;
 			return moveList[best];
-		}
-		
-		//virtual 
-		//pass on success notfication to relevent Genepool
-		void NotifyWon()
-		{
-
-		}
-
-		//virtual 
-		//pass on failure notfication to relevent Genepool
-		void NotifyEliminated()
-		{
-
 		}
 
 		void NotifyGameStart(const Game& theGame)
 		{
-
+			mTimeTaken = 0;
 		}
 
-		//help memory management a little bit...
-		std::vector< Change::List* > recycledChangeLists;
+		clock_t mTimeTaken;
+		Change::List* mChangeList;
 
 	// create an instance of this player
 	} mctsPlayer;
