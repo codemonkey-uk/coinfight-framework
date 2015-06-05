@@ -65,12 +65,28 @@ namespace Thad{
 		
 		Move GetRandomMove( const GameState& theGame )
 		{
-			static std::vector<Move> moveList;
+			const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
+			const Change& pool = theGame.GetGameChange(); 
+
+			std::vector<Coin> coins;
+			coins.reserve(COIN_COUNT);
 			
-			GetAllMoves(theGame, moveList);
+			//for each coin that can be played
+			for (const Coin *ci=&COINLIST[0];ci!=&COINLIST[COIN_COUNT];++ci)
+				if (player_change.GetCount(*ci) > 0)
+					coins.push_back(*ci);
 			
-			// random move
-			return moveList[rand()%moveList.size()];
+			//select one randomly
+			Coin c = coins[rand()%coins.size()];
+			
+			//get all possible sets of change for that coin
+			GetAllPossibleChange(
+				pool,
+				c, 
+				*mChangeList);
+			
+			// select one randomly
+			return Move(c, (*mChangeList)[ rand()%mChangeList->size()] );
 		}
 		
 		int PlayOut(GameState theGame)
