@@ -10,10 +10,13 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
+#include <cmath>
 
 // timing stuff
 #include <sys/times.h>
 #include <unistd.h>
+
+// #define MCTS_LOG_RATIOS stderr
 
 namespace Thad{
 
@@ -68,16 +71,16 @@ namespace Thad{
 			const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
 			const Change& pool = theGame.GetGameChange(); 
 
-			std::vector<Coin> coins;
-			coins.reserve(COIN_COUNT);
+			Coin coins[COIN_COUNT];
+			int cc=0;
 			
 			//for each coin that can be played
 			for (const Coin *ci=&COINLIST[0];ci!=&COINLIST[COIN_COUNT];++ci)
 				if (player_change.GetCount(*ci) > 0)
-					coins.push_back(*ci);
+					coins[cc++] = *ci;
 			
 			//select one randomly
-			Coin c = coins[rand()%coins.size()];
+			Coin c = coins[rand()%cc];
 			
 			//get all possible sets of change for that coin
 			GetAllPossibleChange(
@@ -86,7 +89,7 @@ namespace Thad{
 				*mChangeList);
 			
 			// select one randomly
-			return Move(c, (*mChangeList)[ rand()%mChangeList->size()] );
+			return Move(c, (*mChangeList)[ rand()%mChangeList->size() ] );
 		}
 		
 		int PlayOut(GameState theGame)
@@ -109,29 +112,64 @@ namespace Thad{
 				theGame.GetCurrentPlayer() 
 			).GetTotalValue();
 			
-			clock_t turnTime = timeLeft / turnsLeft;
+			clock_t turnTime = timeLeft / (turnsLeft+1);
 			
 			std::vector<Move> moveList;
 			GetAllMoves(theGame, moveList);
-			std::vector<int> scores;
-			scores.resize( moveList.size(), 0 );
-
 			int best = 0;
-			int trials = 0;
-			do
+			
+			if (moveList.size()>1)
 			{
-				for (int i=0; i!=moveList.size(); ++i)
+				// wins, simulations
+				std::vector< std::pair<float, float> > wins_simulations;
+				wins_simulations.resize( moveList.size(), std::pair<float, float>(0,1) );
+
+				std::vector< float > uct;
+				uct.resize( moveList.size(), 0 );
+
+				const float c = sqrt(2);			
+				int trials = 0;
+				do
 				{
-					GameState newGame = theGame.PlayMove( moveList[i] );
+					const float lnt = log(trials);
+					int j=0;
+					for (int i=0; i!=moveList.size(); ++i)
+					{
+						uct[i] = wins_simulations[i].first / wins_simulations[i].second;
+						uct[i] += c * sqrt(lnt / wins_simulations[i].second);
+						if (uct[i]>uct[j]) j = i;
+					}
+				
+					GameState newGame = theGame.PlayMove( moveList[j] );
+					wins_simulations[j].second++;
 					if (PlayOut(newGame)==theGame.GetCurrentPlayer())
 					{
-						scores[i]++;
-						if (scores[i] > scores[best])
-							best = i;
+						wins_simulations[j].first++;
+						if ((wins_simulations[j].first/wins_simulations[j].second) > 
+							(wins_simulations[best].first/wins_simulations[best].second))
+							best = j;
 					}
+				
+					trials++;
+				
+				}while( times(&t) - currentTurnClockStart < turnTime );
+						
+				#ifdef MCTS_LOG_RATIOS
+				Serialise(MCTS_LOG_RATIOS, theGame);
+				for (int i=0; i!=moveList.size(); ++i)
+				{
+					int a = wins_simulations[i].first / trials * 80;
+					int b = wins_simulations[i].second / trials * 80;
+					char txt[80];
+					std::fill(txt, txt+a, '+');
+					std::fill(txt+a, txt+b, '-');
+					txt[b]=0;
+					fprintf(MCTS_LOG_RATIOS, "%2i]%s%c\n", i, txt, i==best?'*':' ');
 				}
-				trials++;				
-			}while( times(&t) - currentTurnClockStart < turnTime );
+				Serialise(MCTS_LOG_RATIOS, moveList[best]);
+				#endif
+				
+			}
 			mTimeTaken += times(&t) - currentTurnClockStart;
 			return moveList[best];
 		}
