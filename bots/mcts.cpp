@@ -87,9 +87,24 @@ namespace Thad{
 				pool,
 				c, 
 				*mChangeList);
-			
+
+			int t = 0;
+			for(int i=0;i!=mChangeList->size();++i)
+			    t += (*mChangeList)[i].GetTotalValue();
+			    
+            int i = 0;
+            if (t>0)
+            {
+                int r = rand()%t;
+                for(;i!=mChangeList->size();++i)
+                {
+                    r -= (*mChangeList)[i].GetTotalValue();
+                    if (r<=0) break;
+                }
+            }
+            
 			// select one randomly
-			return Move(c, (*mChangeList)[ rand()%mChangeList->size() ] );
+			return Move(c, (*mChangeList)[i] );
 		}
 		
 		int PlayOut(GameState theGame)
