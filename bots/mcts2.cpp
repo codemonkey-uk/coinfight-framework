@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
+#include <cfloat>
 
 // timing stuff
 #include <sys/times.h>
@@ -43,7 +44,7 @@ namespace Thad{
 		    Node( const Move& move )
 		        : mMove(move)
 		        , mWins(0)
-		        , mSims(1)
+		        , mSims(0)
 		    { }
 		    
 		    Move mMove;
@@ -52,9 +53,9 @@ namespace Thad{
 		    
 		    float UCT(float lnt) const
 		    {
-		        float s = std::max(1.0f,(float)mSims);
-		        float uct = mWins / s;
-		        uct += uct_c * sqrt(lnt / s);
+		        if (mSims==0) return FLT_MAX;
+		        float uct = (float)mWins / (float)mSims;
+		        uct += uct_c * sqrt(lnt / (float)mSims);
 		        return uct;
 		    }
 		    
@@ -65,6 +66,31 @@ namespace Thad{
 		    
 		    std::vector<Node>* mChildren;
 		};
+		
+		int CountTrials(const std::vector<Node>* nodes)
+		{
+		    int result=0;
+		    for (int i=0;i!=nodes->size();++i)
+		        result += (*nodes)[i].mSims;
+		    return result;
+		}
+		
+		Node* SelectNode(std::vector<Node>* nodes)
+		{
+            float best_uct = 0;
+            Node* result = 0;
+            const float lnt = log( (float)CountTrials(nodes) );
+            for (std::vector<Node>::iterator i=nodes->begin(); i!=nodes->end(); ++i)
+            {
+                float uct = i->UCT(lnt);
+                if (uct>best_uct) 
+                {
+                    result = &*i;
+                    best_uct = uct;
+                }
+            }
+            return result;
+		}
 
 		std::vector<Node>* GetAllMoves( const GameState& theGame )
 		{
@@ -161,55 +187,48 @@ namespace Thad{
 			clock_t turnTime = timeLeft / (turnsLeft+1);
 			
 			std::vector<Node>* moveList = GetAllMoves(theGame);
-			int best = 0;
+			Node* best = &(*moveList)[0];
 			
 			if (moveList->size()>1)
 			{
-				std::vector< float > uct;
-				uct.resize( moveList->size(), 0 );
-
-				int trials = 0;
 				do
 				{
-					const float lnt = log(trials);
-					int j=0;
-					for (int i=0; i!=moveList->size(); ++i)
-					{
-						uct[i] = (*moveList)[i].UCT(lnt);
-						if (uct[i]>uct[j]) j = i;
-					}
+					Node* trial = SelectNode(moveList);
 				
-					GameState newGame = theGame.PlayMove(  (*moveList)[j].mMove );
-					 (*moveList)[j].mSims++;
+					GameState newGame = theGame.PlayMove( trial->mMove );
+					trial->mSims++;
 					if (PlayOut(newGame)==theGame.GetCurrentPlayer())
 					{
-                        (*moveList)[j].mWins++;
-						if (((*moveList)[j].Ratio()) > 
-							((*moveList)[best].Ratio()))
-							best = j;
+                        trial->mWins++;
+						if (trial->Ratio() > 
+							best->Ratio())
+							best = trial;
 					}
-				
-					trials++;
 				
 				}while( times(&t) - currentTurnClockStart < turnTime );
 						
 				#ifdef MCTS_LOG_RATIOS
+				float trials = (float)CountTrials(moveList);
 				Serialise(MCTS_LOG_RATIOS, theGame);
-				for (int i=0; i!=moveList.size(); ++i)
+				for (int i=0; i!=moveList->size(); ++i)
 				{
-					int a = wins_simulations[i].first / trials * 80;
-					int b = wins_simulations[i].second / trials * 80;
+					int a = (*moveList)[i].mWins / trials * 80;
+					int b = (*moveList)[i].mSims / trials * 80;
 					char txt[80];
 					std::fill(txt, txt+a, '+');
 					std::fill(txt+a, txt+b, '-');
 					txt[b]=0;
-					fprintf(MCTS_LOG_RATIOS, "%2i]%s%c\n", i, txt, i==best?'*':' ');
+					fprintf(
+					    MCTS_LOG_RATIOS, 
+					    "%2i]%s%c\n", 
+					    i, txt, (best==&(*moveList)[i])?'*':' '
+					);
 				}
-				Serialise(MCTS_LOG_RATIOS, moveList[best]);
+				Serialise(MCTS_LOG_RATIOS, (*moveList)[best].mMove);
 				#endif
 			}
 			
-			Move result = (*moveList)[best].mMove;
+			Move result = best->mMove;
 			delete moveList;
 			
 			mTimeTaken += times(&t) - currentTurnClockStart;
