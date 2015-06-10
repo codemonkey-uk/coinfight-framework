@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <cfloat>
+#include <cassert>
 
 // timing stuff
 #include <sys/times.h>
@@ -45,6 +46,7 @@ namespace Thad{
 		        : mMove(move)
 		        , mWins(0)
 		        , mSims(0)
+		        , mChildren(0)
 		    { }
 		    
 		    Move mMove;
@@ -75,9 +77,22 @@ namespace Thad{
 		    return result;
 		}
 		
+		void Cleanup(const std::vector<Node>* nodes)
+		{
+		    for (int i=0;i!=nodes->size();++i)
+		    {
+		        if ((*nodes)[i].mChildren)
+		            Cleanup((*nodes)[i].mChildren);
+		    }
+		    delete nodes;
+		}
+		
 		Node* SelectNode(std::vector<Node>* nodes)
 		{
-            float best_uct = 0;
+		    assert( nodes );
+		    assert( nodes->empty()==false );
+		    
+            float best_uct = -FLT_MAX;
             Node* result = 0;
             const float lnt = log( (float)CountTrials(nodes) );
             for (std::vector<Node>::iterator i=nodes->begin(); i!=nodes->end(); ++i)
@@ -89,6 +104,8 @@ namespace Thad{
                     best_uct = uct;
                 }
             }
+            
+            assert(result);
             return result;
 		}
 
@@ -119,56 +136,28 @@ namespace Thad{
 					}
 				}
 			}
-			
+			std::random_shuffle( moveListOut->begin(), moveListOut->end() );
 			return moveListOut;
 		}
-		
-		Move GetRandomMove( const GameState& theGame )
+
+		int Explore( Node* node, GameState theGame )
 		{
-			const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
-			const Change& pool = theGame.GetGameChange(); 
+		    assert(node);
+		    
+    		int p = theGame.GetCurrentPlayer();
+    		if (theGame.GetActivePlayers()==1)
+        		return p;
 
-			Coin coins[COIN_COUNT];
-			int cc=0;
-			
-			//for each coin that can be played
-			for (const Coin *ci=&COINLIST[0];ci!=&COINLIST[COIN_COUNT];++ci)
-				if (player_change.GetCount(*ci) > 0)
-					coins[cc++] = *ci;
-			
-			//select one randomly
-			Coin c = coins[rand()%cc];
-			
-			//get all possible sets of change for that coin
-			GetAllPossibleChange(
-				pool,
-				c, 
-				*mChangeList);
+            if (node->mChildren == 0)
+                node->mChildren = GetAllMoves(theGame);
+            
+            node = SelectNode(node->mChildren);
+            theGame = theGame.PlayMove( node->mMove );
+            node->mSims++;
+            int winner = Explore(node, theGame);
+            node->mWins += (winner==p);
 
-			int t = 0;
-			for(int i=0;i!=mChangeList->size();++i)
-				t += (*mChangeList)[i].GetTotalValue();
-		
-			int i = 0;
-			if (t>0)
-			{
-				int r = rand()%t;
-				for(;i!=mChangeList->size();++i)
-				{
-					r -= (*mChangeList)[i].GetTotalValue();
-					if (r<=0) break;
-				}
-			}
-
-			// select one randomly
-			return Move(c, (*mChangeList)[i] );
-		}
-		
-		int PlayOut(GameState theGame)
-		{
-			while (theGame.GetActivePlayers()>1)
-				theGame = theGame.PlayMove( GetRandomMove(theGame) );
-			return theGame.GetCurrentPlayer();
+            return winner;
 		}
 
 		//override GetMove function
@@ -187,6 +176,7 @@ namespace Thad{
 			clock_t turnTime = timeLeft / (turnsLeft+1);
 			
 			std::vector<Node>* moveList = GetAllMoves(theGame);
+			assert( moveList && moveList->empty()==false );
 			Node* best = &(*moveList)[0];
 			
 			if (moveList->size()>1)
@@ -197,7 +187,7 @@ namespace Thad{
 				
 					GameState newGame = theGame.PlayMove( trial->mMove );
 					trial->mSims++;
-					if (PlayOut(newGame)==theGame.GetCurrentPlayer())
+					if (Explore(trial, newGame)==theGame.GetCurrentPlayer())
 					{
                         trial->mWins++;
 						if (trial->Ratio() > 
@@ -224,12 +214,12 @@ namespace Thad{
 					    i, txt, (best==&(*moveList)[i])?'*':' '
 					);
 				}
-				Serialise(MCTS_LOG_RATIOS, (*moveList)[best].mMove);
+				Serialise(MCTS_LOG_RATIOS, best->mMove);
 				#endif
 			}
 			
 			Move result = best->mMove;
-			delete moveList;
+			Cleanup( moveList );
 			
 			mTimeTaken += times(&t) - currentTurnClockStart;
 			return result;
