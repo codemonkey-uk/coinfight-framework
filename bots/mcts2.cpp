@@ -12,7 +12,6 @@
 #include <cstdlib>
 #include <cmath>
 #include <cfloat>
-#include <cassert>
 
 // timing stuff
 #include <sys/times.h>
@@ -89,9 +88,6 @@ namespace Thad{
 		
 		Node* SelectNode(std::vector<Node>* nodes)
 		{
-		    assert( nodes );
-		    assert( nodes->empty()==false );
-		    
             float best_uct = -FLT_MAX;
             Node* result = 0;
             const float lnt = log( (float)CountTrials(nodes) );
@@ -105,11 +101,12 @@ namespace Thad{
                 }
             }
             
-            assert(result);
             return result;
 		}
 
         // returns true if a contains all of b
+        // ie: 2x1, 0x5, 0x10, 0x25 contains 1x1, 0x5, 0x10, 0x25
+        //     0x1, 1x5, 0x10, 0x25 does not contain 1x1, 0x5, 0x10, 0x25
         bool Contains (const Change& a, const Change& b)
         {
             for (int i=0;i!=COIN_COUNT;++i)
@@ -120,10 +117,14 @@ namespace Thad{
             return true;
         }
         
-        Change::List Filter(Change::List& list)
+        // removes all the change from a change set 
+        // that is strictly a contained by (a sub set of) 
+        // other change in the set
+        // ie: 2x1, 0x5, 0x10, 0x25 contains 1x1, 0x5, 0x10, 0x25
+        // so Filter would remove the second from the Change List
+        void Filter(Change::List& list)
         {
-            Change::List result;
-            
+            int new_size = 0;
             for (int i=0;i!=list.size();++i)
             {
                 int j=i+1;
@@ -133,10 +134,9 @@ namespace Thad{
                         break;
                 }
                 if (j==list.size())
-                    result.push_back(list[i]);
+                    list[new_size++] = list[i];
             }
-            
-            return result;
+            list.resize(new_size);
         }
         
 		std::vector<Node>* GetAllMoves( const GameState& theGame )
@@ -156,7 +156,7 @@ namespace Thad{
 						*ci, 
 						*mChangeList);
                     
-                    *mChangeList = Filter(*mChangeList);
+                    Filter(*mChangeList);
                     
 					//for each possible set of change
 					const Change::List::iterator e = mChangeList->end();
@@ -174,8 +174,6 @@ namespace Thad{
 
 		int Explore( Node* node, GameState theGame )
 		{
-		    assert(node);
-		    
     		int p = theGame.GetCurrentPlayer();
     		if (theGame.GetActivePlayers()==1)
         		return p;
@@ -208,7 +206,6 @@ namespace Thad{
 			clock_t turnTime = timeLeft / (turnsLeft+1);
 			
 			std::vector<Node>* moveList = GetAllMoves(theGame);
-			assert( moveList && moveList->empty()==false );
 			Node* best = &(*moveList)[0];
 			
 			if (moveList->size()>1)
