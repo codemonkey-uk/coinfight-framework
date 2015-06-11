@@ -109,6 +109,36 @@ namespace Thad{
             return result;
 		}
 
+        // returns true if a contains all of b
+        bool Contains (const Change& a, const Change& b)
+        {
+            for (int i=0;i!=COIN_COUNT;++i)
+            {
+                if (a.GetCount(COINLIST[i])<b.GetCount(COINLIST[i]))
+                    return false;
+            }
+            return true;
+        }
+        
+        Change::List Filter(Change::List& list)
+        {
+            Change::List result;
+            
+            for (int i=0;i!=list.size();++i)
+            {
+                int j=i+1;
+                for (;j!=list.size();++j)
+                {
+                    if (Contains(list[j], list[i]))
+                        break;
+                }
+                if (j==list.size())
+                    result.push_back(list[i]);
+            }
+            
+            return result;
+        }
+        
 		std::vector<Node>* GetAllMoves( const GameState& theGame )
 		{
 			const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
@@ -125,10 +155,12 @@ namespace Thad{
 						pool,
 						*ci, 
 						*mChangeList);
-
+                    
+                    *mChangeList = Filter(*mChangeList);
+                    
 					//for each possible set of change
 					const Change::List::iterator e = mChangeList->end();
-					for(Change::List::iterator i = mChangeList->begin();i!=e;++i){
+					for (Change::List::iterator i = mChangeList->begin();i!=e;++i){
 				
 						//create "move" from coin to give, and change to take				
 						const Move m(*ci,*i);
