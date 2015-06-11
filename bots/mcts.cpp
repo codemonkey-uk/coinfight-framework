@@ -1,5 +1,7 @@
 //
 // "MCTS"
+// A Monte Carlo Tree Search AI for Coin Fight
+// (c) T Frogley 2015
 //
 
 #include "cppFIGHT.h"
@@ -11,6 +13,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
+#include <cfloat>
 
 // timing stuff
 #include <sys/times.h>
@@ -20,183 +23,265 @@
 
 namespace Thad{
 
-	using namespace CPPFight;
+    using namespace CPPFight;
+    
+    const float uct_c = sqrt(2);
+    
+    //
+    // Monte Carlo tree search FIGHT Player
+    //
+    class MCTSBot : public Player
+    {
+    public:
 
-	//
-	// Monte Carlo tree search FIGHT Player
-	//
-	class MCTSBot : public Player
-	{
-	public:
+        //construct base class with AI name and author name
+        MCTSBot()
+         : Player( "MCTS", "Thad" )
+         , mChangeList( new Change::List )
+        {
+        }
+        
+        struct Node
+        {
+            Node( const Move& move )
+                : mMove(move)
+                , mWins(0)
+                , mSims(0)
+                , mChildren(0)
+            { }
+            
+            Move mMove;
+            int mWins;
+            int mSims;
+            
+            float UCT(float lnt) const
+            {
+                if (mSims==0) return FLT_MAX;
+                float uct = (float)mWins / (float)mSims;
+                uct += uct_c * sqrt(lnt / (float)mSims);
+                return uct;
+            }
+            
+            float Ratio() const
+            {
+                return (float)mWins / (float)mSims;
+            }
+            
+            std::vector<Node>* mChildren;
+        };
+        
+        int CountTrials(const std::vector<Node>* nodes)
+        {
+            int result=0;
+            for (int i=0;i!=nodes->size();++i)
+                result += (*nodes)[i].mSims;
+            return result;
+        }
+        
+        void Cleanup(const std::vector<Node>* nodes)
+        {
+            for (int i=0;i!=nodes->size();++i)
+            {
+                if ((*nodes)[i].mChildren)
+                    Cleanup((*nodes)[i].mChildren);
+            }
+            delete nodes;
+        }
+        
+        Node* SelectNode(std::vector<Node>* nodes)
+        {
+            float best_uct = -FLT_MAX;
+            Node* result = 0;
+            const float lnt = log( (float)CountTrials(nodes) );
+            for (std::vector<Node>::iterator i=nodes->begin(); i!=nodes->end(); ++i)
+            {
+                float uct = i->UCT(lnt);
+                if (uct>best_uct) 
+                {
+                    result = &*i;
+                    best_uct = uct;
+                }
+            }
+            
+            return result;
+        }
 
-		//construct base class with AI name and author name
-		MCTSBot()
-		 : Player( "MCTS", "Thad" )
-		 , mChangeList( new Change::List )
-		{
-		}
+        // returns true if a contains all of b
+        // ie: 2x1, 0x5, 0x10, 0x25 contains 1x1, 0x5, 0x10, 0x25
+        //     0x1, 1x5, 0x10, 0x25 does not contain 1x1, 0x5, 0x10, 0x25
+        bool Contains (const Change& a, const Change& b)
+        {
+            for (int i=0;i!=COIN_COUNT;++i)
+            {
+                if (a.GetCount(COINLIST[i])<b.GetCount(COINLIST[i]))
+                    return false;
+            }
+            return true;
+        }
+        
+        // removes all the change from a change set 
+        // that is strictly a contained by (a sub set of) 
+        // other change in the set
+        // ie: 2x1, 0x5, 0x10, 0x25 contains 1x1, 0x5, 0x10, 0x25
+        // so Filter would remove the second from the Change List
+        void Filter(Change::List& list)
+        {
+            int new_size = 0;
+            for (int i=0;i!=list.size();++i)
+            {
+                int j=i+1;
+                for (;j!=list.size();++j)
+                {
+                    if (Contains(list[j], list[i]))
+                        break;
+                }
+                if (j==list.size())
+                    list[new_size++] = list[i];
+            }
+            list.resize(new_size);
+        }
+        
+        std::vector<Node>* GetAllMoves( const GameState& theGame )
+        {
+            const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
+            const Change& pool = theGame.GetGameChange(); 
 
-		void GetAllMoves( const GameState& theGame, std::vector<Move>& moveListOut )
-		{
-			const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
-			const Change& pool = theGame.GetGameChange(); 
+            std::vector<Node>* moveListOut = new std::vector<Node>();
+            
+            //for each coin that can be played
+            for (const Coin *ci=&COINLIST[0];ci!=&COINLIST[COIN_COUNT];++ci){                
+                if (player_change.GetCount(*ci) > 0){
+                    
+                    //get all possible sets of change into array
+                    GetAllPossibleChange(
+                        pool,
+                        *ci, 
+                        *mChangeList);
+                    
+                    Filter(*mChangeList);
+                    
+                    //for each possible set of change
+                    const Change::List::iterator e = mChangeList->end();
+                    for (Change::List::iterator i = mChangeList->begin();i!=e;++i){
+                
+                        //create "move" from coin to give, and change to take                
+                        const Move m(*ci,*i);
+                        moveListOut->push_back(m);
+                    }
+                }
+            }
+            std::random_shuffle( moveListOut->begin(), moveListOut->end() );
+            return moveListOut;
+        }
 
-			// need to tell resize to will with a value even when count is 0
-			moveListOut.resize(0, Move(PENNY));
-			
-			//for each coin that can be played
-			for (const Coin *ci=&COINLIST[0];ci!=&COINLIST[COIN_COUNT];++ci){				
-				if (player_change.GetCount(*ci) > 0){
-					
-					//get all possible sets of change into array
-					GetAllPossibleChange(
-						pool,
-						*ci, 
-						*mChangeList);
+        int Explore( Node* node, GameState theGame )
+        {
+            // play out the game
+            std::vector< std::pair<Node*, int> > stack;
+            
+            // find upper bound on total turns left
+            int turnsLeft = 0;
+            for (int i=0; i!=theGame.GetPlayerCount(); ++i)
+                turnsLeft += theGame.GetPlayerChange( i ).GetTotalValue();
+            
+            // size our stack for moves left
+            stack.reserve(turnsLeft);
+            
+            do
+            {
+                if (node->mChildren == 0)
+                    node->mChildren = GetAllMoves(theGame);
+                    
+                int p = theGame.GetCurrentPlayer();
+                node = SelectNode(node->mChildren);
+                theGame = theGame.PlayMove( node->mMove );
+                
+                stack.push_back( std::pair<Node*, int>( node, p ) );
+            }while(theGame.GetActivePlayers()>1);
+            int winner = theGame.GetCurrentPlayer();
+            
+            // back propagate the explored nodes
+            for (int i=0; i!=stack.size(); ++i)
+            {
+                stack[i].first->mSims++;
+                stack[i].first->mWins += (winner==stack[i].second);
+            }
+            
+            return winner;
+        }
 
-					//for each possible set of change
-					const Change::List::iterator e = mChangeList->end();
-					for(Change::List::iterator i = mChangeList->begin();i!=e;++i){
-				
-						//create "move" from coin to give, and change to take				
-						const Move m(*ci,*i);
-						moveListOut.push_back(m);
-					}
-				}
-			}
-		}
-		
-		Move GetRandomMove( const GameState& theGame )
-		{
-			const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
-			const Change& pool = theGame.GetGameChange(); 
+        //override GetMove function
+        virtual Move GetMove (const Game& theGame)
+        {
+            tms t;
+            clock_t currentTurnClockStart = times(&t);
+            
+            clock_t timeLeft = CFIGHT_PLAYER_TIME_PER_GAME - mTimeTaken;
 
-			Coin coins[COIN_COUNT];
-			int cc=0;
-			
-			//for each coin that can be played
-			for (const Coin *ci=&COINLIST[0];ci!=&COINLIST[COIN_COUNT];++ci)
-				if (player_change.GetCount(*ci) > 0)
-					coins[cc++] = *ci;
-			
-			//select one randomly
-			Coin c = coins[rand()%cc];
-			
-			//get all possible sets of change for that coin
-			GetAllPossibleChange(
-				pool,
-				c, 
-				*mChangeList);
+            // we could get this from the PlayOut, but this is worst (best) case
+            int turnsLeft = theGame.GetPlayerChange( 
+                theGame.GetCurrentPlayer() 
+            ).GetTotalCount();
+            
+            clock_t turnTime = timeLeft / (turnsLeft+1);
+            
+            std::vector<Node>* moveList = GetAllMoves(theGame);
+            Node* best = &(*moveList)[0];
+            
+            if (moveList->size()>1)
+            {
+                do
+                {
+                    Node* trial = SelectNode(moveList);
+                
+                    GameState newGame = theGame.PlayMove( trial->mMove );
+                    trial->mSims++;
+                    if (Explore(trial, newGame)==theGame.GetCurrentPlayer())
+                    {
+                        trial->mWins++;
+                        if (trial->Ratio() > 
+                            best->Ratio())
+                            best = trial;
+                    }
+                
+                }while( times(&t) - currentTurnClockStart < turnTime );
+                        
+                #ifdef MCTS_LOG_RATIOS
+                float trials = (float)CountTrials(moveList);
+                Serialise(MCTS_LOG_RATIOS, theGame);
+                for (int i=0; i!=moveList->size(); ++i)
+                {
+                    int a = (*moveList)[i].mWins / trials * 80;
+                    int b = (*moveList)[i].mSims / trials * 80;
+                    char txt[80];
+                    std::fill(txt, txt+a, '+');
+                    std::fill(txt+a, txt+b, '-');
+                    txt[b]=0;
+                    fprintf(
+                        MCTS_LOG_RATIOS, 
+                        "%2i]%s%c\n", 
+                        i, txt, (best==&(*moveList)[i])?'*':' '
+                    );
+                }
+                Serialise(MCTS_LOG_RATIOS, best->mMove);
+                #endif
+            }
+            
+            Move result = best->mMove;
+            Cleanup( moveList );
+            
+            mTimeTaken += times(&t) - currentTurnClockStart;
+            return result;
+        }
 
-			int t = 0;
-			for(int i=0;i!=mChangeList->size();++i)
-				t += (*mChangeList)[i].GetTotalValue();
-		
-			int i = 0;
-			if (t>0)
-			{
-				int r = rand()%t;
-				for(;i!=mChangeList->size();++i)
-				{
-					r -= (*mChangeList)[i].GetTotalValue();
-					if (r<=0) break;
-				}
-			}
+        void NotifyGameStart(const Game& theGame)
+        {
+            mTimeTaken = 0;
+        }
 
-			// select one randomly
-			return Move(c, (*mChangeList)[i] );
-		}
-		
-		int PlayOut(GameState theGame)
-		{
-			while (theGame.GetActivePlayers()>1)
-				theGame = theGame.PlayMove( GetRandomMove(theGame) );
-			return theGame.GetCurrentPlayer();
-		}
+        clock_t mTimeTaken;
+        Change::List* mChangeList;
 
-		//override GetMove function
-		virtual Move GetMove (const Game& theGame)
-		{
-			tms t;
-			clock_t currentTurnClockStart = times(&t);
-			
-			clock_t timeLeft = CFIGHT_PLAYER_TIME_PER_GAME - mTimeTaken;
-
-			// we could get this from the PlayOut, but this is worst (best) case
-			int turnsLeft = theGame.GetPlayerChange( 
-				theGame.GetCurrentPlayer() 
-			).GetTotalValue();
-			
-			clock_t turnTime = timeLeft / (turnsLeft+1);
-			
-			std::vector<Move> moveList;
-			GetAllMoves(theGame, moveList);
-			int best = 0;
-			
-			if (moveList.size()>1)
-			{
-				// wins, simulations
-				std::vector< std::pair<float, float> > wins_simulations;
-				wins_simulations.resize( moveList.size(), std::pair<float, float>(0,1) );
-
-				std::vector< float > uct;
-				uct.resize( moveList.size(), 0 );
-
-				const float c = sqrt(2);			
-				int trials = 0;
-				do
-				{
-					const float lnt = log(trials);
-					int j=0;
-					for (int i=0; i!=moveList.size(); ++i)
-					{
-						uct[i] = wins_simulations[i].first / wins_simulations[i].second;
-						uct[i] += c * sqrt(lnt / wins_simulations[i].second);
-						if (uct[i]>uct[j]) j = i;
-					}
-				
-					GameState newGame = theGame.PlayMove( moveList[j] );
-					wins_simulations[j].second++;
-					if (PlayOut(newGame)==theGame.GetCurrentPlayer())
-					{
-						wins_simulations[j].first++;
-						if ((wins_simulations[j].first/wins_simulations[j].second) > 
-							(wins_simulations[best].first/wins_simulations[best].second))
-							best = j;
-					}
-				
-					trials++;
-				
-				}while( times(&t) - currentTurnClockStart < turnTime );
-						
-				#ifdef MCTS_LOG_RATIOS
-				Serialise(MCTS_LOG_RATIOS, theGame);
-				for (int i=0; i!=moveList.size(); ++i)
-				{
-					int a = wins_simulations[i].first / trials * 80;
-					int b = wins_simulations[i].second / trials * 80;
-					char txt[80];
-					std::fill(txt, txt+a, '+');
-					std::fill(txt+a, txt+b, '-');
-					txt[b]=0;
-					fprintf(MCTS_LOG_RATIOS, "%2i]%s%c\n", i, txt, i==best?'*':' ');
-				}
-				Serialise(MCTS_LOG_RATIOS, moveList[best]);
-				#endif
-				
-			}
-			mTimeTaken += times(&t) - currentTurnClockStart;
-			return moveList[best];
-		}
-
-		void NotifyGameStart(const Game& theGame)
-		{
-			mTimeTaken = 0;
-		}
-
-		clock_t mTimeTaken;
-		Change::List* mChangeList;
-
-	// create an instance of this player
-	} mctsPlayer;
+    // create an instance of this player
+    } mcts2Player;
 };
