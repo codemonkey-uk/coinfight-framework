@@ -174,19 +174,37 @@ namespace Thad{
 
 		int Explore( Node* node, GameState theGame )
 		{
-    		int p = theGame.GetCurrentPlayer();
-    		if (theGame.GetActivePlayers()==1)
-        		return p;
-
-            if (node->mChildren == 0)
-                node->mChildren = GetAllMoves(theGame);
+            // play out the game
+            std::vector< std::pair<Node*, int> > stack;
             
-            node = SelectNode(node->mChildren);
-            theGame = theGame.PlayMove( node->mMove );
-            node->mSims++;
-            int winner = Explore(node, theGame);
-            node->mWins += (winner==p);
-
+            // find upper bound on total turns left
+            int turnsLeft = 0;
+            for (int i=0; i!=theGame.GetPlayerCount(); ++i)
+                turnsLeft += theGame.GetPlayerChange( i ).GetTotalValue();
+			
+			// size our stack for moves left
+			stack.reserve(turnsLeft);
+			
+            do
+            {
+                if (node->mChildren == 0)
+                    node->mChildren = GetAllMoves(theGame);
+                    
+                int p = theGame.GetCurrentPlayer();
+                node = SelectNode(node->mChildren);
+                theGame = theGame.PlayMove( node->mMove );
+                
+                stack.push_back( std::pair<Node*, int>( node, p ) );
+            }while(theGame.GetActivePlayers()>1);
+            int winner = theGame.GetCurrentPlayer();
+            
+            // back propagate the explored nodes
+            for (int i=0; i!=stack.size(); ++i)
+            {
+                stack[i].first->mSims++;
+                stack[i].first->mWins += (winner==stack[i].second);
+            }
+            
             return winner;
 		}
 
@@ -201,7 +219,7 @@ namespace Thad{
 			// we could get this from the PlayOut, but this is worst (best) case
 			int turnsLeft = theGame.GetPlayerChange( 
 				theGame.GetCurrentPlayer() 
-			).GetTotalValue();
+			).GetTotalCount();
 			
 			clock_t turnTime = timeLeft / (turnsLeft+1);
 			
