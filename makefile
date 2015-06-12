@@ -1,5 +1,5 @@
-CFLAGS=-I. -Wall
-CXXFLAGS=-I. -Wall
+CFLAGS=-I. -Wall -O3 
+CXXFLAGS=-I. -Wall -O3
 
 obj = cppFIGHT.o cplayers.o cexample.o example.o pplayer.o argumentProcessor.o tournamentResultsFormatter.o
 bots_obj = bots/thad.o bots/wookie.o bots/mcts.o

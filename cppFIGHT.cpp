@@ -573,6 +573,16 @@ namespace CPPFight {
 
 		std::for_each(myPlayerList.begin(),myPlayerList.end(),NotifyGameStartFn(*this));
 		std::fill(myPlayerClocks.begin(),myPlayerClocks.end(),0);
+		
+		if (gVerbose) 
+		{
+			for (int i=0; i!=myPlayerList.size(); ++i)
+			{
+				fprintf(stderr, "%s", i ? " vs " : "# ");
+				fprintf(stderr, "%s", myPlayerList[i]->GetTitle().c_str());
+			}
+			fprintf(stderr, "\n");
+		}
 
 		do{
 			const int whosturn = GetCurrentPlayer();
@@ -635,7 +645,11 @@ namespace CPPFight {
 				}
 
 				if (myPlayersChange[whosturn].IsEmpty())
+				{
 					myPlayerList[whosturn]->NotifyEliminated();
+					if (gVerbose)
+						fprintf(stderr, "# Eliminated: %s\n", myPlayerList[whosturn]->GetTitle().c_str());
+				}
 
 			}
 			myTurn++;
@@ -644,6 +658,10 @@ namespace CPPFight {
 		//one active player left, find who...
 		const int result = GetNextActivePlayer(GetCurrentPlayer());
 		myPlayerList[result]->NotifyWon();
+
+		if (gVerbose)
+			fprintf(stderr, "# Winner: %s\n", myPlayerList[result]->GetTitle().c_str());
+			
 		return myPlayerList[result]->GetUID();
 	}
 
