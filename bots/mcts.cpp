@@ -105,19 +105,6 @@ namespace Thad{
             
             return result;
         }
-
-        // returns true if a contains all of b
-        // ie: 2x1, 0x5, 0x10, 0x25 contains 1x1, 0x5, 0x10, 0x25
-        //     0x1, 1x5, 0x10, 0x25 does not contain 1x1, 0x5, 0x10, 0x25
-        bool Contains (const Change& a, const Change& b)
-        {
-            for (int i=0;i!=COIN_COUNT;++i)
-            {
-                if (a.GetCount(COINLIST[i])<b.GetCount(COINLIST[i]))
-                    return false;
-            }
-            return true;
-        }
         
         // removes all the change from a change set 
         // that is strictly a contained by (a sub set of) 
@@ -132,7 +119,7 @@ namespace Thad{
                 int j=i+1;
                 for (;j!=list.size();++j)
                 {
-                    if (Contains(list[j], list[i]))
+                    if (list[j].Contains(list[i]))
                         break;
                 }
                 if (j==list.size())

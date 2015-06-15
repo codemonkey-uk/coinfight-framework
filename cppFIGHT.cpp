@@ -322,6 +322,19 @@ namespace CPPFight {
 		return *this;
 	}
 
+	// returns true if a contains all of b
+	// ie: 2x1, 0x5, 0x10, 0x25 contains 1x1, 0x5, 0x10, 0x25
+	//     0x1, 1x5, 0x10, 0x25 does not contain 1x1, 0x5, 0x10, 0x25
+	bool Change::Contains (const Change& rhs) const
+	{
+		for (int i=0;i!=COIN_COUNT;++i)
+		{
+			if (this->GetCount(COINLIST[i])<rhs.GetCount(COINLIST[i]))
+				return false;
+		}
+		return true;
+	}
+
 	//
 	// class Move
 	//

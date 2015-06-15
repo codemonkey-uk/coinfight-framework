@@ -126,6 +126,11 @@ namespace CPPFight
 			inline Change& operator-=(const Change& rhs)
 			{ return RemoveChange(rhs); }
 
+			// returns true if this contains all the coins that appear rhs
+			// ie: 2x1, 0x5, 0x10, 0x25 contains 1x1, 0x5, 0x10, 0x25
+			//     0x1, 1x5, 0x10, 0x25 does not contain 1x1, 0x5, 0x10, 0x25
+			bool Contains(const Change& rhs) const;
+
 			//support for C API / data structures
 			explicit Change(const CFIGHT_Change& c);
 			void GetCChange(CFIGHT_Change* result)const;
