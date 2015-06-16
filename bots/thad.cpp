@@ -13,6 +13,12 @@
 #include <algorithm>
 #include <cstdlib>
 
+// timing stuff
+#include <sys/times.h>
+#include <unistd.h>
+
+extern clock_t ticks_per_s;
+
 namespace Thad{
 
 	using namespace CPPFight;
@@ -227,7 +233,10 @@ namespace Thad{
 	public:
 
 		//construct base class with AI name and author name
-		SmartyPants() : Player( "SmartyPants", "Thad" )
+		SmartyPants()
+		 : Player( "SmartyPants", "Thad" )
+		 , mDepth(1)
+		 , mDefaultDepth(1)
 		{
 		}
 
@@ -315,9 +324,11 @@ namespace Thad{
 						pool,
 						*ci, 
 						*someChange);
+						
+					FilterChangeInPlace(*someChange);
 
 					//for each possible set of change
-					//(reversed iteration improves AB prune by as much as 70%)
+					//(reversed iteration improves AB prune by as much as 70% (unfiltered change set)
 					const Change::List::reverse_iterator end = someChange->rend();
 					for(Change::List::reverse_iterator i = someChange->rbegin();i!=end;++i){
 				
@@ -368,10 +379,64 @@ exit:
 
 		//override GetMove function
 		virtual Move GetMove (const Game& theGame)
-		{	
+		{
 			//count turns for GA, then return best move according to min/max
-			++myTurnCount;
-			return GetBestMove( theGame, theGame.GetCurrentPlayer(), std::numeric_limits<int>::max(), 3 ).move;
+			++myTurnCount;		
+		
+			// Timing stuff
+            tms t;
+            clock_t currentTurnClockStart = times(&t);
+            
+            clock_t timeLeft = (CFIGHT_PLAYER_TIME_PER_GAME - mTimeTaken) * 0.8;
+
+            // number of coins left == worst case scenario for turns I have left
+            int turnsLeft = theGame.GetPlayerChange( 
+                theGame.GetCurrentPlayer() 
+            ).GetTotalCount();
+            
+            // value of coins left == best case scenario for turns I have left
+            int maxDepth = theGame.GetPlayerChange( 
+                theGame.GetCurrentPlayer() 
+            ).GetTotalValue() * theGame.GetActivePlayers();
+            
+            // cap out mDepth so iterative deepening doesn't go wild at end-game
+            if (maxDepth < mDepth)
+            	mDepth = maxDepth;
+            
+            clock_t turnTime = timeLeft / (turnsLeft+1);
+
+			clock_t dt = 0;			
+			Move result(PENNY);
+
+			do
+			{
+				result = GetBestMove( theGame, theGame.GetCurrentPlayer(), std::numeric_limits<int>::max(), mDepth ).move;
+			
+				// deepen, or not?
+				dt = (times(&t) - currentTurnClockStart);
+				
+				// debugging 
+				// printf("%i - %i (%f / %fs)\n", myTurnCount, mDepth, dt/(double)ticks_per_s, turnTime/(double)ticks_per_s);
+								
+				if (dt < turnTime / 3)
+					mDepth ++;
+				if (dt > turnTime * 3 / 4)
+					mDepth --;
+					
+				// enough time left to look again this turn?
+			} while (dt < turnTime / 4 && maxDepth < mDepth);
+			
+			// went over, back off quickly
+			if (dt > turnTime)
+					mDepth /= 2;
+					
+			if (myTurnCount == 1)
+				mDefaultDepth = mDepth;
+				
+				
+						
+			mTimeTaken += dt;			
+			return result;
 		}
 		
 		//virtual 
@@ -398,6 +463,9 @@ exit:
 		{
 			//reset turn counter
 			myTurnCount = 0;
+			
+			mDepth = mDefaultDepth;
+			mTimeTaken = 0;
 
 			//generate game key
 			if (theGame.GetPlayerCount()==2){
@@ -470,6 +538,8 @@ exit:
 
 		//current turn count (for learning AI)				
 		int myTurnCount;
+		
+		int mDepth, mDefaultDepth;
 
 		//note - do not use [] as GenomePool as no default constructor
 		typedef std::map< GameKey, GenomePool > GenomePoolMap;
@@ -478,6 +548,9 @@ exit:
 		//help memory management a little bit...
 		std::vector< Change::List* > recycledChangeLists;
 
+		// track time taken this game, for iterative deepening
+		clock_t mTimeTaken;
+		
 	// create an instance of this player
 	} maxChangePlayer;
 };
