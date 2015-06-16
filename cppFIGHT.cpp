@@ -983,6 +983,25 @@ namespace CPPFight {
 		// and the QUARTER coins will never be used. this leaves considerable
 		// room for optimisation if necessary.
 	}
+
+	// Given a change list, such as returned by GetAllPossibleChange
+	// remove all change sets contained by other change sets in the list
+	void FilterChangeInPlace(CPPFight::Change::List& list)
+	{
+		int new_size = 0;
+		for (int i=0;i!=list.size();++i)
+		{
+			int j=i+1;
+			for (;j!=list.size();++j)
+			{
+				if (list[j].Contains(list[i]))
+					break;
+			}
+			if (j==list.size())
+				list[new_size++] = list[i];
+		}
+		list.resize(new_size);
+	}
 }
 
 //

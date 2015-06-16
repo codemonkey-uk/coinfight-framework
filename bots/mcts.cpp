@@ -106,28 +106,6 @@ namespace Thad{
             return result;
         }
         
-        // removes all the change from a change set 
-        // that is strictly a contained by (a sub set of) 
-        // other change in the set
-        // ie: 2x1, 0x5, 0x10, 0x25 contains 1x1, 0x5, 0x10, 0x25
-        // so Filter would remove the second from the Change List
-        void Filter(Change::List& list)
-        {
-            int new_size = 0;
-            for (int i=0;i!=list.size();++i)
-            {
-                int j=i+1;
-                for (;j!=list.size();++j)
-                {
-                    if (list[j].Contains(list[i]))
-                        break;
-                }
-                if (j==list.size())
-                    list[new_size++] = list[i];
-            }
-            list.resize(new_size);
-        }
-        
         std::vector<Node>* GetAllMoves( const GameState& theGame )
         {
             const Change& player_change = theGame.GetPlayerChange( theGame.GetCurrentPlayer() );
@@ -145,7 +123,7 @@ namespace Thad{
                         *ci, 
                         *mChangeList);
                     
-                    Filter(*mChangeList);
+                    FilterChangeInPlace(*mChangeList);
                     
                     //for each possible set of change
                     const Change::List::iterator e = mChangeList->end();

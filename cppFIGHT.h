@@ -172,6 +172,12 @@ namespace CPPFight
 		Change::List& result
 	) { GetAllPossibleChange( availableChange, coinToChange-1, result ); }
 
+	// Given a change list, such as returned by GetAllPossibleChange
+	// remove all change sets contained by other change sets in the list
+	// ie: 2x1, 0x5, 0x10, 0x25 Contains 1x1, 0x5, 0x10, 0x25
+	// so Filter would remove the second from the Change::List
+	void FilterChangeInPlace(Change::List& list);
+	
 	// adding change, combine two lots of change (insertion)
 	// ie Change c = a+b;
 	inline Change operator+(Change lhs, const Change& rhs)
