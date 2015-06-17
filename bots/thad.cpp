@@ -1,7 +1,8 @@
 //
-// "SmartyPants" - Thad's FIGHT! AI v2
-// (c) T.Frogley 2001
-// codemonkey_uk@hotmail.com
+// "SmartyPants" - Thad's FIGHT! AI v2.5
+// (c) T.Frogley 2001 (original implementation), 
+// (c) T.Frogley 2015 (iterative deepening work)
+// codemonkey.uk@gmail.com
 //
 
 #include "cppFIGHT.h"
@@ -277,7 +278,7 @@ namespace Thad{
 						best = score;
 					}
 				}
-			}			
+			}
 
 			return result - best;
 		}
@@ -316,7 +317,7 @@ namespace Thad{
 			}
 
 			//for each coin that can be played
-			for (const Coin *ci=&COINLIST[0];ci!=&COINLIST[COIN_COUNT];++ci){				
+			for (const Coin *ci=&COINLIST[0];ci!=&COINLIST[COIN_COUNT];++ci){
 				if (player_change.GetCount(*ci) > 0){
 					
 					//get all possible sets of change into array
@@ -343,12 +344,12 @@ namespace Thad{
 						if (recursive>0 && newGame.GetActivePlayers()>1){
 							
 							//recursivly examine move, get its score
-							score = GetBestMove( newGame, player_index, bestScore, recursive-1).score;						
+							score = GetBestMove( newGame, player_index, bestScore, recursive-1).score;
 						}
 						else{
 
 							//leaf node - just get heuristic value
-							score = GameHeuristic( newGame, player_index, myHeuristic );							
+							score = GameHeuristic( newGame, player_index, myHeuristic );
 						}
 					
 						//Min/Max search
@@ -373,7 +374,7 @@ namespace Thad{
 			}
 
 exit:
-			recycledChangeLists.push_back( someChange );						
+			recycledChangeLists.push_back( someChange );
 			return MoveScore( Move( bestCoin, bestChange ), bestScore );
 		}
 
@@ -384,58 +385,76 @@ exit:
 			++myTurnCount;		
 		
 			// Timing stuff
-            tms t;
-            clock_t currentTurnClockStart = times(&t);
-            
-            clock_t timeLeft = (CFIGHT_PLAYER_TIME_PER_GAME - mTimeTaken) * 0.8;
+			tms t;
+			clock_t currentTurnClockStart = times(&t);
+		
+			const clock_t timeLeft = (CFIGHT_PLAYER_TIME_PER_GAME - mTimeTaken);
 
-            // number of coins left == worst case scenario for turns I have left
-            int turnsLeft = theGame.GetPlayerChange( 
-                theGame.GetCurrentPlayer() 
-            ).GetTotalCount();
-            
-            // value of coins left == best case scenario for turns I have left
-            int maxDepth = theGame.GetPlayerChange( 
-                theGame.GetCurrentPlayer() 
-            ).GetTotalValue() * theGame.GetActivePlayers();
-            
-            // cap out mDepth so iterative deepening doesn't go wild at end-game
-            if (maxDepth < mDepth)
-            	mDepth = maxDepth;
-            
-            clock_t turnTime = timeLeft / (turnsLeft+1);
+			// number of coins left == worst case scenario for turns I have left
+			// using a worst case here front loads effort, 
+			// so more time is spent considering moves in the early game
+			const int turnsLeft = theGame.GetPlayerChange( 
+				theGame.GetCurrentPlayer() 
+			).GetTotalCount();
+		
+			// take an appropriate number of time given time left and turns left to play
+			clock_t turnTime = timeLeft / (turnsLeft+1);
+		
+			// value of coins left is worst case scenario for turns left in game
+			int maxDepth = 0;
+			for (int p=0;p!=theGame.GetPlayerCount();++p)
+				maxDepth = theGame.GetPlayerChange( p ).GetTotalValue();
+		
+			// cap out mDepth so iterative deepening doesn't go wild at end-game
+			if (maxDepth < mDepth)
+				mDepth = maxDepth;
 
-			clock_t dt = 0;			
+			clock_t dt = 0;
+			clock_t searchTime = 0;
 			Move result(PENNY);
+			
+			// ratio needs investigating more deeply
+			// it represents the assumed time cost
+			// of going from a search depth of N to N+1
+			const int ratio = 2;
 
 			do
 			{
+				clock_t searchStartTime = currentTurnClockStart + dt;
+				
 				result = GetBestMove( theGame, theGame.GetCurrentPlayer(), std::numeric_limits<int>::max(), mDepth ).move;
 			
-				// deepen, or not?
-				dt = (times(&t) - currentTurnClockStart);
+				clock_t timeNow =  times(&t);
+				searchTime = timeNow - searchStartTime;
+
+				// time since turn started
+				dt = (timeNow - currentTurnClockStart);
 				
 				// debugging 
-				// printf("%i - %i (%f / %fs)\n", myTurnCount, mDepth, dt/(double)ticks_per_s, turnTime/(double)ticks_per_s);
-								
-				if (dt < turnTime / 3)
+				//printf("%i - %i (%fs / %fs / %fs)\n", 
+				//	myTurnCount, mDepth, 
+				//	searchTime/(double)ticks_per_s, 
+				//	dt/(double)ticks_per_s, 
+				//	turnTime/(double)ticks_per_s);
+					
+				if (searchTime*ratio < turnTime)
 					mDepth ++;
-				if (dt > turnTime * 3 / 4)
+				if (searchTime > turnTime)
 					mDepth --;
 					
-				// enough time left to look again this turn?
-			} while (dt < turnTime / 4 && maxDepth < mDepth);
+				
+			} while (dt + searchTime*ratio < turnTime && maxDepth < mDepth);
 			
 			// went over, back off quickly
 			if (dt > turnTime)
-					mDepth /= 2;
+				mDepth /= 2;
 					
 			if (myTurnCount == 1)
 				mDefaultDepth = mDepth;
 				
 				
-						
-			mTimeTaken += dt;			
+				
+			mTimeTaken += dt;
 			return result;
 		}
 		
@@ -536,7 +555,7 @@ exit:
 		//current heuristic
 		int myHeuristic[4];
 
-		//current turn count (for learning AI)				
+		//current turn count (for learning AI)
 		int myTurnCount;
 		
 		int mDepth, mDefaultDepth;
