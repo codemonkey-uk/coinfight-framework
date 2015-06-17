@@ -242,17 +242,16 @@ namespace Thad{
 		}
 
 		//destructor - report heuristics for possible reuse later
-#ifdef SMARTYPANTS_PRINT_HEURISTICS
 		~SmartyPants()
 		{
+#ifdef SMARTYPANTS_PRINT_HEURISTICS
 			for(GenomePoolMap::iterator i=myGenomePool.begin();i!=myGenomePool.end();++i){
 				int h[4];
 				i->second.GetGenome(i->second.GetCurrentBestGenome()).GetHeuristic(h);
 				printf("(%i,%i)=%i,%i,%i,%i\n",i->first.type,i->first.id,h[0],h[1],h[2],h[3]);
 			}
-			getchar();
-		}
 #endif//SMARTYPANTS_PRINT_HEURISTICS
+		}
 
 		//calculate the heuristic value of a pile of change
 		inline int ChangeHeuristic( const Change& change, const int* heuristic ) const 
@@ -416,7 +415,7 @@ exit:
 			// ratio needs investigating more deeply
 			// it represents the assumed time cost
 			// of going from a search depth of N to N+1
-			const int ratio = 2;
+			const float ratio = 2.5;
 
 			do
 			{
@@ -426,24 +425,16 @@ exit:
 			
 				clock_t timeNow =  times(&t);
 				searchTime = timeNow - searchStartTime;
-
+				
 				// time since turn started
 				dt = (timeNow - currentTurnClockStart);
-				
-				// debugging 
-				//printf("%i - %i (%fs / %fs / %fs)\n", 
-				//	myTurnCount, mDepth, 
-				//	searchTime/(double)ticks_per_s, 
-				//	dt/(double)ticks_per_s, 
-				//	turnTime/(double)ticks_per_s);
 					
 				if (searchTime*ratio < turnTime)
 					mDepth ++;
 				if (searchTime > turnTime)
 					mDepth --;
-					
 				
-			} while (dt + searchTime*ratio < turnTime && maxDepth < mDepth);
+			} while (dt + searchTime*ratio < turnTime && mDepth<maxDepth);
 			
 			// went over, back off quickly
 			if (dt > turnTime)
@@ -451,8 +442,6 @@ exit:
 					
 			if (myTurnCount == 1)
 				mDefaultDepth = mDepth;
-				
-				
 				
 			mTimeTaken += dt;
 			return result;
@@ -514,7 +503,7 @@ exit:
 				//create new gene pool for new key
 				//
 
-				std::set< Genome > seed_pool;				
+				std::set< Genome > seed_pool;
 				
 				//pull in recent experiance
 				for(GenomePoolMap::iterator i=myGenomePool.begin();i!=myGenomePool.end();++i){
@@ -524,7 +513,7 @@ exit:
 				//insert some historically good heuristics
 				
 				//strong 1 on 1
-				const static int recyled1[4] = { 6979, 13665, 30386, 65535 };				
+				const static int recyled1[4] = { 6979, 13665, 30386, 65535 };
 				seed_pool.insert(recyled1);
 
 				//strong 4 player heuristic
@@ -535,7 +524,7 @@ exit:
 				itr = myGenomePool.insert( 
 					myGenomePool.begin(), 
 					GenomePoolMap::value_type( myGameKey, GenomePool( seed_pool ) ) 
-				);				
+				);
 			}
 			
 			//get heuristic for this game
@@ -545,7 +534,7 @@ exit:
 		//game key - type and id
 		struct GameKey{
 			enum Type { ONE_ON_ONE, MULTIPLAYER } type;
-			int id;			
+			int id;
 			bool operator<(const GameKey& rhs)const
 			{
 				return type<rhs.type || (type==rhs.type && id<rhs.id);
