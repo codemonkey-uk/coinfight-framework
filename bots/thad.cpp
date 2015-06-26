@@ -397,7 +397,7 @@ exit:
 			).GetTotalCount();
 		
 			// take an appropriate number of time given time left and turns left to play
-			clock_t turnTime = timeLeft / (turnsLeft+1);
+			const clock_t turnTime = timeLeft / (turnsLeft+1);
 		
 			// value of coins left is worst case scenario for turns left in game
 			int maxDepth = 0;
@@ -415,7 +415,7 @@ exit:
 			// ratio needs investigating more deeply
 			// it represents the assumed time cost
 			// of going from a search depth of N to N+1
-			const float ratio = 2.5;
+			const float ratio = 2.5f;
 
 			do
 			{
@@ -431,19 +431,30 @@ exit:
 					
 				if (searchTime*ratio < turnTime)
 					mDepth ++;
-				if (searchTime > turnTime)
+				if (searchTime > turnTime && mDepth>1)
 					mDepth --;
 				
 			} while (dt + searchTime*ratio < turnTime && mDepth<maxDepth);
 			
 			// went over, back off quickly
 			if (dt > turnTime)
-				mDepth /= 2;
+				mDepth = std::max(1, mDepth/2);
 					
 			if (myTurnCount == 1)
 				mDefaultDepth = mDepth;
 				
 			mTimeTaken += dt;
+			if (mTimeTaken>CFIGHT_PLAYER_TIME_PER_GAME)
+			    fprintf(stderr, 
+			    "%s is about to be eliminated, on turn %i spent %f searching to depth = %i / %i\n"
+			    "turn time budget was %fs / %fs with ~%i turns left.",
+			        GetTitle().c_str(),
+			        myTurnCount,  
+			        searchTime/(float)ticks_per_s,
+			        mDepth, maxDepth, 
+			        turnTime/(float)ticks_per_s, timeLeft/(float)ticks_per_s, 
+			        turnsLeft);
+			    
 			return result;
 		}
 		
