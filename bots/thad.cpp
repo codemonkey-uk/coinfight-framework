@@ -18,11 +18,50 @@
 #include <sys/times.h>
 #include <unistd.h>
 
+#include "search_costs.h"
+#define UPDATE_SEARCH_COSTS stderr
+
 extern clock_t ticks_per_s;
 
 namespace Thad{
 
 	using namespace CPPFight;
+
+    float GetRatio(int turn, int depth)
+    {
+        float result = 2.5f;
+        if (turn < search_costs_t && depth <= search_costs_d)
+        {
+            float a = search_costs[turn][depth-1];
+            float b = search_costs[turn][depth];
+            if (a>0 && b>0)
+                result = b / a;
+        }
+        return std::max(1.f, result);
+    }
+    
+    // how many nodes will I inspect if I search to depth on turn
+    int GetNodes(int turn, int depth)
+    {
+        // bring turn into range
+        while (turn>=search_costs_t && turn>0)
+            turn--;
+    
+        // depth array is 1-base
+        int dm = 0;
+        do {
+            dm++;
+            depth--;
+            // bring depth into range, and find a data-point
+        } while ((depth>=search_costs_d || search_costs[turn][depth]==0) && depth>0);
+
+        // extrapolate for missing data
+        int result = std::max(1, search_costs[turn][depth]);
+        while (dm-- && result < std::numeric_limits<int>::max()/2)
+            result *= 2;
+        
+        return result;
+    }
 
 	//
 	// Genome type
@@ -244,6 +283,7 @@ namespace Thad{
 		//destructor - report heuristics for possible reuse later
 		~SmartyPants()
 		{
+            LogTimes();
 #ifdef SMARTYPANTS_PRINT_HEURISTICS
 			for(GenomePoolMap::iterator i=myGenomePool.begin();i!=myGenomePool.end();++i){
 				int h[4];
@@ -348,7 +388,9 @@ namespace Thad{
 						else{
 
 							//leaf node - just get heuristic value
-							score = GameHeuristic( newGame, player_index, myHeuristic );
+							score = GameHeuristic( newGame, player_index, myHeuristic );						
+							// count leaf nodes inspected
+							mVA++;
 						}
 					
 						//Min/Max search
@@ -387,7 +429,8 @@ exit:
 			tms t;
 			clock_t currentTurnClockStart = times(&t);
 		
-			const clock_t timeLeft = (CFIGHT_PLAYER_TIME_PER_GAME - mTimeTaken);
+		    // plan on using 90% of game time, leaves 10% margin for error
+			const clock_t timeLeft = (CFIGHT_PLAYER_TIME_PER_GAME - mTimeTaken) * 0.9f;
 
 			// number of coins left == worst case scenario for turns I have left
 			// using a worst case here front loads effort, 
@@ -412,49 +455,61 @@ exit:
 			clock_t searchTime = 0;
 			Move result(PENNY);
 			
-			// ratio needs investigating more deeply
-			// it represents the assumed time cost
-			// of going from a search depth of N to N+1
-			const float ratio = 2.5f;
-
+			float node_time = 1.f;
+            bool repeat = false;
 			do
 			{
 				clock_t searchStartTime = currentTurnClockStart + dt;
-				
+
+                mVA = 0;
 				result = GetBestMove( theGame, theGame.GetCurrentPlayer(), std::numeric_limits<int>::max(), mDepth ).move;
 			
 				clock_t timeNow =  times(&t);
-				searchTime = timeNow - searchStartTime;
+				searchTime = std::max(1ul, timeNow - searchStartTime);
+				
+				LogVisits( theGame.GetCurrentTurn(), mDepth, mVA );
 				
 				// time since turn started
 				dt = (timeNow - currentTurnClockStart);
-					
-				if (searchTime*ratio < turnTime)
-					mDepth ++;
-				if (searchTime > turnTime && mDepth>1)
-					mDepth --;
 				
-			} while (dt + searchTime*ratio < turnTime && mDepth<maxDepth);
+			    node_time = (float)searchTime / (float)mVA;
+				
+				// decide if there is time to do a deeper search for the current turn
+                repeat = false;
+                while (dt + GetNodes(theGame.GetCurrentTurn(), mDepth+1)*node_time < turnTime && mDepth < maxDepth)
+                {
+                    mDepth ++;
+                    repeat = true;
+                }
+                
+			} while (repeat);
 			
-			// went over, back off quickly
-			if (dt > turnTime)
-				mDepth = std::max(1, mDepth/2);
-					
+			// remember where we advanced depth to on our opening move...
 			if (myTurnCount == 1)
 				mDefaultDepth = mDepth;
-				
+			
 			mTimeTaken += dt;
 			if (mTimeTaken>CFIGHT_PLAYER_TIME_PER_GAME)
+			{
 			    fprintf(stderr, 
-			    "%s is about to be eliminated, on turn %i spent %f searching to depth = %i / %i\n"
-			    "turn time budget was %fs / %fs with ~%i turns left.",
+			        "%s is about to be eliminated, on turn %i (%i) spent %f searching to depth = %i / %i\n"
+			        "%i nodes visited, expected %i\n"
+    			    "turn time budget was %fs / %fs with ~%i turns left.\n",
 			        GetTitle().c_str(),
-			        myTurnCount,  
+			        myTurnCount, theGame.GetCurrentTurn(), 
 			        searchTime/(float)ticks_per_s,
 			        mDepth, maxDepth, 
+			        mVA, GetNodes(theGame.GetCurrentTurn(), mDepth),
 			        turnTime/(float)ticks_per_s, timeLeft/(float)ticks_per_s, 
 			        turnsLeft);
-			    
+			}
+			 
+			// back off for next turn
+            while (GetNodes(theGame.GetCurrentTurn()+theGame.GetPlayerCount(), mDepth)*node_time > turnTime && mDepth>1)
+            {
+                mDepth--;
+			}
+				
 			return result;
 		}
 		
@@ -569,7 +624,50 @@ exit:
 
 		// track time taken this game, for iterative deepening
 		clock_t mTimeTaken;
+		int mVA; // visit accumulator
 		
+#ifdef UPDATE_SEARCH_COSTS 
+        std::map< std::pair<int, int>, int > mVisits;
+        static int maxTurn;
+        static int maxDepth;
+		void LogVisits(int turn, int depth, int nodes)
+		{
+            maxTurn = std::max(maxTurn, turn);
+            maxDepth = std::max(maxDepth, depth);
+            // get worst case times at depths
+            mVisits[ std::pair< int, int>(turn, depth) ] = std::max(
+                mVisits[ std::pair< int, int>(turn, depth) ],
+                nodes
+            );
+		}
+		void LogTimes()
+		{
+		    fprintf(UPDATE_SEARCH_COSTS, "const int search_costs_t = %i;\n", maxTurn+1);
+		    fprintf(UPDATE_SEARCH_COSTS, "const int search_costs_d = %i;\n", maxDepth);
+		    fprintf(UPDATE_SEARCH_COSTS, "const int search_costs[search_costs_t][search_costs_d] = {\n");
+		    for (int t=0;t<=maxTurn;++t)
+		    {
+		        fprintf(UPDATE_SEARCH_COSTS, "// t = %i \n{ ", t);
+                for (int d=1;d<=maxDepth;++d)
+                {
+                    int dn = mVisits[ std::pair< int, int>(t, d) ];
+                    if (d<=search_costs_d && t<search_costs_t)
+                        dn = std::max(dn, search_costs[t][d-1]);
+                    fprintf(UPDATE_SEARCH_COSTS, "%i, ", dn );
+                }
+                fprintf(UPDATE_SEARCH_COSTS, "}, \n");
+		    }
+		    fprintf(UPDATE_SEARCH_COSTS, "}; \n");
+		}
+#else
+    inline void LogVisits(int turn, int depth){}
+    inline void LogTimes(){}
+#endif
+
 	// create an instance of this player
 	} maxChangePlayer;
+#ifdef UPDATE_SEARCH_COSTS 
+    int SmartyPants::maxTurn=search_costs_t-1;
+    int SmartyPants::maxDepth=search_costs_d;
+#endif
 };

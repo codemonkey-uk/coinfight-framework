@@ -1580,6 +1580,7 @@ int main(int argc, char* argv[])
 	if (gVerbose) printf("C++ FIGHT (c) T.Frogley 2001,2002,2013\n");
 
 	CPPFight::PlayerList tournament=CPPFight::PlayerRegister::Instance().GetPlayerList();
+	std::random_shuffle(tournament.begin(), tournament.end());
 
 	PrintfEliminationFormatter pfErf;
 	PrintfRoundRobinResultsFormatter pfRRrf;

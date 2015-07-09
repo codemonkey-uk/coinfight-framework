@@ -18,8 +18,9 @@ example.o : cppFIGHT.h
 argumentProcessor.o : argumentProcessor.h
 cppFIGHT.o pplayer.o : cppFIGHT.h pplayer.h argumentProcessor.h tournamentResultsFormatter.h
 tournamentResultsFormatter.o : tournamentResultsFormatter.h
+bots/thad.o : bots/search_costs.h
 
 .PHONY : clean
 clean:
-	rm fight $(obj)
-	rm fight_all $(bots_obj)
+	rm -f fight $(obj)
+	rm -f fight_all $(bots_obj)
