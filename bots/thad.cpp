@@ -58,7 +58,7 @@ namespace Thad{
         // extrapolate for missing data
         int result = std::max(1, search_costs[turn][depth]);
         while (dm-- && result < std::numeric_limits<int>::max()/2)
-            result *= 2;
+            result += result*2;
         
         return result;
     }
