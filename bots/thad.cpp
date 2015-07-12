@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 #include "search_costs.h"
-#define UPDATE_SEARCH_COSTS stderr
+// #define UPDATE_SEARCH_COSTS stderr
 
 extern clock_t ticks_per_s;
 
@@ -660,7 +660,7 @@ exit:
 		    fprintf(UPDATE_SEARCH_COSTS, "}; \n");
 		}
 #else
-    inline void LogVisits(int turn, int depth){}
+    inline void LogVisits(int turn, int depth, int nodes){}
     inline void LogTimes(){}
 #endif
 
